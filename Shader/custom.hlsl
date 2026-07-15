@@ -55,6 +55,7 @@
     float  _CustomContactShadowThickness; \
     float  _CustomContactShadowBias; \
     float  _CustomContactShadowBlur; \
+    float  _CustomContactShadowBlurStrength; \
     float  _CustomContactShadowQuality; \
     float  _CustomContactShadowDither; \
     float  _CustomContactShadowMaskChannel;

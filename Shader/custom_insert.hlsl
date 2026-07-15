@@ -178,9 +178,11 @@ float lilShadowExContactShadow(float3 positionWS, float4 positionCS, float3 L)
     float3 rayPos = centerVS + lightDirVS * (stepLen * jitter);
 
     // 遮蔽窓 (bias..thickness) の両端のソフト幅。Blur=0 で従来の binary 判定と一致する。
-    float blur = saturate(_CustomContactShadowBlur);
+    // BlurStrength は Blur の効き具合の倍率。1 超で thickness を超える幅までソフト化し、
+    // ペナンブラ減衰も加速する (影は薄く柔らかくなる)。
+    float blur = saturate(_CustomContactShadowBlur) * max(_CustomContactShadowBlurStrength, 0.0);
     float riseEnd = _CustomContactShadowBias + max(_CustomContactShadowThickness * blur, 1e-4);
-    float fallStart = _CustomContactShadowThickness * (1.0 - blur);
+    float fallStart = _CustomContactShadowThickness * saturate(1.0 - blur);
 
     float occlusion = 0.0;
 
@@ -201,7 +203,7 @@ float lilShadowExContactShadow(float3 positionWS, float4 positionCS, float3 L)
 
         // 2. ペナンブラ近似: 遮蔽物までの距離 (レイ進行度) に応じて影を弱める
         float rayT = (float)(i + 1) / (float)steps;
-        float distFade = 1.0 - rayT * blur;
+        float distFade = saturate(1.0 - rayT * blur);
 
         // スクリーン端フェード: 画面外の遮蔽情報が無いことによる影の切れ目を目立たなくする
         float2 edge = 1.0 - abs(uv * 2.0 - 1.0);
