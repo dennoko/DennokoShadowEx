@@ -27,8 +27,20 @@ namespace dennokoworks
         MaterialProperty customExtraNormal1stScale;
         MaterialProperty customExtraNormal2ndScale;
 
+        // Rim Light 2nd
+        MaterialProperty customRim2ndEnabled;
+        MaterialProperty customRim2ndMode;
+        MaterialProperty customRim2ndColor;
+        MaterialProperty customRim2ndPower;
+        MaterialProperty customRim2ndBorder;
+        MaterialProperty customRim2ndBlur;
+        MaterialProperty customRim2ndEnableLighting;
+        MaterialProperty customRim2ndDepthWidth;
+        MaterialProperty customRim2ndDepthThreshold;
+
         private static bool isShowCustomProperties;
         private static bool isShowExtraNormal;
+        private static bool isShowRim2nd;
         private const string shaderName = "ShadowEx";
 
         protected override void LoadCustomProperties(MaterialProperty[] props, Material material)
@@ -56,6 +68,16 @@ namespace dennokoworks
             customExtraNormalStrengthB = FindProperty("_CustomExtraNormalStrengthB", props, false);
             customExtraNormal1stScale  = FindProperty("_CustomExtraNormal1stScale",  props, false);
             customExtraNormal2ndScale  = FindProperty("_CustomExtraNormal2ndScale",  props, false);
+
+            customRim2ndEnabled        = FindProperty("_CustomRim2ndEnabled",        props, false);
+            customRim2ndMode           = FindProperty("_CustomRim2ndMode",           props, false);
+            customRim2ndColor          = FindProperty("_CustomRim2ndColor",          props, false);
+            customRim2ndPower          = FindProperty("_CustomRim2ndPower",          props, false);
+            customRim2ndBorder         = FindProperty("_CustomRim2ndBorder",         props, false);
+            customRim2ndBlur           = FindProperty("_CustomRim2ndBlur",           props, false);
+            customRim2ndEnableLighting = FindProperty("_CustomRim2ndEnableLighting", props, false);
+            customRim2ndDepthWidth     = FindProperty("_CustomRim2ndDepthWidth",     props, false);
+            customRim2ndDepthThreshold = FindProperty("_CustomRim2ndDepthThreshold", props, false);
         }
 
         protected override void DrawCustomProperties(Material material)
@@ -139,6 +161,63 @@ namespace dennokoworks
                     "テクスチャのインポート設定は「Normal map」ではなく「Default」かつ sRGB(Color Texture) をオフ(Linear)にしてください。" +
                     "Normal mapインポートはチャンネルをスウィズルするためパッキングが壊れます。" +
                     "また本機能はlilToon本体のノーマルマップ機能が有効なときに合成されます。",
+                    MessageType.Info);
+
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.EndVertical();
+            }
+
+            isShowRim2nd = Foldout("Rim Light 2nd", "Rim Light 2nd", isShowRim2nd);
+            if(isShowRim2nd)
+            {
+                EditorGUILayout.BeginVertical(boxOuter);
+                EditorGUILayout.LabelField("Rim Light 2nd", customToggleFont);
+                EditorGUILayout.BeginVertical(boxInnerHalf);
+
+                bool rimEnabled = false;
+                if(customRim2ndEnabled != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    rimEnabled = EditorGUILayout.Toggle("Enable Rim 2nd", customRim2ndEnabled.floatValue > 0.5f);
+                    if(EditorGUI.EndChangeCheck()) customRim2ndEnabled.floatValue = rimEnabled ? 1f : 0f;
+
+                    EditorGUI.BeginDisabledGroup(!rimEnabled);
+                }
+
+                // Mode: 0=Fresnel / 1=Depth Contour
+                int mode = 0;
+                if(customRim2ndMode != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    mode = EditorGUILayout.Popup("Mode", (int)(customRim2ndMode.floatValue + 0.5f), new string[]{ "Fresnel", "Depth Contour" });
+                    if(EditorGUI.EndChangeCheck()) customRim2ndMode.floatValue = mode;
+                }
+
+                if(customRim2ndColor          != null) m_MaterialEditor.ShaderProperty(customRim2ndColor,          "Rim Color (HDR)");
+                if(customRim2ndEnableLighting != null) m_MaterialEditor.ShaderProperty(customRim2ndEnableLighting, "Enable Lighting");
+
+                if(mode == 0)
+                {
+                    EditorGUILayout.LabelField("Fresnel", EditorStyles.boldLabel);
+                    if(customRim2ndPower  != null) m_MaterialEditor.ShaderProperty(customRim2ndPower,  "Power");
+                    if(customRim2ndBorder != null) m_MaterialEditor.ShaderProperty(customRim2ndBorder, "Border");
+                    if(customRim2ndBlur   != null) m_MaterialEditor.ShaderProperty(customRim2ndBlur,   "Blur");
+                }
+                else
+                {
+                    EditorGUILayout.LabelField("Depth Contour", EditorStyles.boldLabel);
+                    if(customRim2ndDepthWidth     != null) m_MaterialEditor.ShaderProperty(customRim2ndDepthWidth,     "Width (px)");
+                    if(customRim2ndDepthThreshold != null) m_MaterialEditor.ShaderProperty(customRim2ndDepthThreshold, "Threshold (m)");
+                }
+
+                if(customRim2ndEnabled != null) EditorGUI.EndDisabledGroup();
+
+                EditorGUILayout.HelpBox(
+                    "エミッション段(ベースパス)で加算するリムライトです。追加ライトのパスでは加算されません。\n" +
+                    "Fresnel: 視線と法線の角度から輪郭を出します(追加サンプル無し)。\n" +
+                    "Depth Contour: _CameraDepthTextureでシルエット境界を検出します。" +
+                    "SSAO同様シャドウ付きDirectional Lightのあるワールドでのみ動作します(無効時は素通し)。\n" +
+                    "Enable Lighting=0で定数色、1でライト色に追従します。",
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();

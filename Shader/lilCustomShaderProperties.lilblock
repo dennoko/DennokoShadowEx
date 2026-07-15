@@ -20,3 +20,15 @@
         _CustomExtraNormalStrengthB ("Strength 2nd (BA)", Range(0,10)) = 1
         _CustomExtraNormal1stScale ("1st Tiling", Vector) = (1,1,0,0)
         _CustomExtraNormal2ndScale ("2nd Tiling", Vector) = (1,1,0,0)
+
+        //----------------------------------------------------------------------------------------------------------------------
+        // ShadowEx Rim Light 2nd (0=Fresnel / 1=Depth Contour)
+        _CustomRim2ndEnabled ("Enable Rim 2nd", Float) = 0
+        _CustomRim2ndMode ("Mode (0:Fresnel 1:Depth)", Float) = 0
+        [HDR] _CustomRim2ndColor ("Rim 2nd Color", Color) = (1,1,1,1)
+        _CustomRim2ndPower ("Fresnel Power", Range(0.1,20)) = 5
+        _CustomRim2ndBorder ("Fresnel Border", Range(0,1)) = 0.5
+        _CustomRim2ndBlur ("Fresnel Blur", Range(0,1)) = 0.1
+        _CustomRim2ndEnableLighting ("Enable Lighting", Range(0,1)) = 0
+        _CustomRim2ndDepthWidth ("Depth Width (px)", Range(1,10)) = 2
+        _CustomRim2ndDepthThreshold ("Depth Threshold", Range(0.001,2)) = 0.1

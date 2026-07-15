@@ -27,7 +27,16 @@
     float  _CustomExtraNormalStrengthA; \
     float  _CustomExtraNormalStrengthB; \
     float4 _CustomExtraNormal1stScale; \
-    float4 _CustomExtraNormal2ndScale;
+    float4 _CustomExtraNormal2ndScale; \
+    float4 _CustomRim2ndColor; \
+    float  _CustomRim2ndEnabled; \
+    float  _CustomRim2ndMode; \
+    float  _CustomRim2ndPower; \
+    float  _CustomRim2ndBorder; \
+    float  _CustomRim2ndBlur; \
+    float  _CustomRim2ndEnableLighting; \
+    float  _CustomRim2ndDepthWidth; \
+    float  _CustomRim2ndDepthThreshold;
 
 // Custom textures
 // (_CameraDepthTexture は lilToon 側 (lil_common_input.hlsl) で宣言済みのため追加宣言しない)
@@ -59,6 +68,33 @@
         float3 exNB = lilShadowExDecodeNormalCh(exChB, _CustomExtraNormalStrengthB); \
         normalmap = lilShadowExBlendNormalUDN(normalmap, exNA); \
         normalmap = lilShadowExBlendNormalUDN(normalmap, exNB); \
+    }
+
+// リムライト2nd (フレネル型 / 深度輪郭型) を合成する。
+// 注入点は BEFORE_BLEND_EMISSION。ここは full/lite 両パスに存在し、かつ
+// #ifndef LIL_PASS_FORWARDADD の内側 (ベースパス限定) なので、リアルタイム追加
+// ライトのパスで定数リムが二重加算されるのを防げる (lilToon本体もadd時は定数リムを無効化)。
+//   Mode 0 = フレネル型 : abs(dot(N,V)) から輪郭を出す。追加サンプル無し。
+//   Mode 1 = 深度輪郭型 : _CameraDepthTexture を再利用しシルエット境界を検出。
+//            LIL_ENABLED_DEPTH_TEX が有効なワールドでのみ動作 (無効時は素通し)。
+// _CustomRim2ndEnableLighting でライト色乗算 (0=定数色 / 1=ライト追従) を補間。
+#define BEFORE_BLEND_EMISSION \
+    if (_CustomRim2ndEnabled > 0.5) \
+    { \
+        float rim2 = 0.0; \
+        if (_CustomRim2ndMode < 0.5) \
+        { \
+            float nvabs = abs(dot(fd.N, fd.V)); \
+            rim2 = pow(saturate(1.0 - nvabs), max(_CustomRim2ndPower, 0.01)); \
+            rim2 = lilTooningScale(_AAStrength, rim2, _CustomRim2ndBorder, _CustomRim2ndBlur); \
+        } \
+        else if (LIL_ENABLED_DEPTH_TEX) \
+        { \
+            float centerEyeDepth = -mul(LIL_MATRIX_V, float4(fd.positionWS, 1.0)).z; \
+            rim2 = lilShadowExDepthContour(fd.positionCS.xy, centerEyeDepth, _CustomRim2ndDepthWidth, _CustomRim2ndDepthThreshold); \
+        } \
+        float3 rim2Col = lerp(_CustomRim2ndColor.rgb, _CustomRim2ndColor.rgb * fd.lightColor, _CustomRim2ndEnableLighting); \
+        fd.col.rgb += rim2Col * (rim2 * _CustomRim2ndColor.a); \
     }
 
 // Inserting a process into pixel shader

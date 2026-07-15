@@ -110,6 +110,29 @@ float3 lilShadowExBlendNormalUDN(float3 baseN, float3 detailN)
     return normalize(float3(baseN.xy + detailN.xy, baseN.z));
 }
 
+//----------------------------------------------------------------------------------------------------------------------
+// ShadowEx : 深度輪郭リムライト用ヘルパー
+//
+//   現在ピクセルのサーフェス深度と、上下左右 widthPixels ピクセル先のシーン深度を比較し、
+//   近傍が奥にある (= シルエット境界) ほど大きい輪郭係数 (0..1) を返す。
+//   _CameraDepthTexture を再利用するため追加サンプラーは消費しない。
+//----------------------------------------------------------------------------------------------------------------------
+float lilShadowExDepthContour(float2 pixelCoord, float centerEyeDepth, float widthPixels, float threshold)
+{
+    float edge = 0.0;
+    float2 offs[4] = { float2(widthPixels, 0.0), float2(-widthPixels, 0.0), float2(0.0, widthPixels), float2(0.0, -widthPixels) };
+    [unroll]
+    for (uint i = 0; i < 4; i++)
+    {
+        float2 texel = pixelCoord + offs[i];
+        float rawDepth = LIL_GET_DEPTH_TEX_CS(texel).r;
+        float neighborDepth = LIL_TO_LINEARDEPTH(rawDepth, texel);
+        // 近傍が奥 = シルエット境界。差が threshold を超えた分を滑らかに係数化。
+        edge = max(edge, smoothstep(threshold, threshold * 2.0, neighborDepth - centerEyeDepth));
+    }
+    return edge;
+}
+
 // アングルベースAO本体。遮蔽度 (0..1) を返す。
 float lilShadowExCalcSSAO(float3 positionWS, float4 positionCS)
 {
