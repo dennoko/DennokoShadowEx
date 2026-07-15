@@ -59,6 +59,15 @@
         _CustomContactShadowMaskChannel ("Mask Channel (0:R 1:G 2:B 3:A)", Float) = 0
 
         //----------------------------------------------------------------------------------------------------------------------
+        // ShadowEx Rim Shade (multiplicative rim darkening)
+        _CustomRimShadeEnabled ("Enable Rim Shade", Float) = 0
+        _CustomRimShadeColor ("Shade Color (Multiply)", Color) = (0.5,0.5,0.55,1)
+        _CustomRimShadeBorder ("Border", Range(0,1)) = 0.5
+        _CustomRimShadeBlur ("Blur", Range(0,1)) = 0.65
+        _CustomRimShadeFresnelPower ("Fresnel Power", Range(0.01,50)) = 1
+        _CustomRimShadeMaskChannel ("Mask Channel (0:R 1:G 2:B 3:A)", Float) = 0
+
+        //----------------------------------------------------------------------------------------------------------------------
         // ShadowEx MatCap Layers (up to 3 additional matcaps, sampled with fd.uvMat)
         _CustomMatCapLayer1Enabled ("Enable MatCap Layer 1", Float) = 0
         _CustomMatCapLayer1Tex ("Layer 1 MatCap", 2D) = "black" {}

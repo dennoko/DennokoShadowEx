@@ -51,6 +51,14 @@ namespace dennokoworks
         MaterialProperty customContactShadowDither;
         MaterialProperty customContactShadowMaskChannel;
 
+        // Rim Shade
+        MaterialProperty customRimShadeEnabled;
+        MaterialProperty customRimShadeColor;
+        MaterialProperty customRimShadeBorder;
+        MaterialProperty customRimShadeBlur;
+        MaterialProperty customRimShadeFresnelPower;
+        MaterialProperty customRimShadeMaskChannel;
+
         // MatCap Layers (up to 3)
         readonly MaterialProperty[] customMatCapLayerEnabled        = new MaterialProperty[3];
         readonly MaterialProperty[] customMatCapLayerTex            = new MaterialProperty[3];
@@ -75,6 +83,7 @@ namespace dennokoworks
         private static bool isShowContactShadow;
         private static bool isShowExtraNormal;
         private static bool isShowRim2nd;
+        private static bool isShowRimShade;
         private static bool isShowSpec;
         private static bool isShowMatCapLayers;
         private const string shaderName = "dennokoworks/ShadowEx";
@@ -144,6 +153,13 @@ namespace dennokoworks
             customRim2ndShadowMask     = FindProperty("_CustomRim2ndShadowMask",     props, false);
             customRim2ndDepthWidth     = FindProperty("_CustomRim2ndDepthWidth",     props, false);
             customRim2ndDepthThreshold = FindProperty("_CustomRim2ndDepthThreshold", props, false);
+
+            customRimShadeEnabled      = FindProperty("_CustomRimShadeEnabled",      props, false);
+            customRimShadeColor        = FindProperty("_CustomRimShadeColor",        props, false);
+            customRimShadeBorder       = FindProperty("_CustomRimShadeBorder",       props, false);
+            customRimShadeBlur         = FindProperty("_CustomRimShadeBlur",         props, false);
+            customRimShadeFresnelPower = FindProperty("_CustomRimShadeFresnelPower", props, false);
+            customRimShadeMaskChannel  = FindProperty("_CustomRimShadeMaskChannel",  props, false);
 
             for(int i = 0; i < 3; i++)
             {
@@ -372,6 +388,54 @@ namespace dennokoworks
                     "Depth Contour: _CameraDepthTextureでシルエット境界を検出します。" +
                     "SSAO同様シャドウ付きDirectional Lightのあるワールドでのみ動作します(無効時は素通し)。\n" +
                     "Enable Lighting=0で定数色、1でライト色に追従します。",
+                    MessageType.Info);
+
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.EndVertical();
+            }
+
+            isShowRimShade = Foldout("Rim Shade", "Rim Shade", isShowRimShade);
+            if(isShowRimShade)
+            {
+                EditorGUILayout.BeginVertical(boxOuter);
+                EditorGUILayout.LabelField("Rim Shade", customToggleFont);
+                EditorGUILayout.BeginVertical(boxInnerHalf);
+
+                if(customRimShadeEnabled != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    bool rsEnabled = EditorGUILayout.Toggle("Enable Rim Shade", customRimShadeEnabled.floatValue > 0.5f);
+                    if(EditorGUI.EndChangeCheck()) customRimShadeEnabled.floatValue = rsEnabled ? 1f : 0f;
+
+                    EditorGUI.BeginDisabledGroup(!rsEnabled);
+                }
+
+                if(customRimShadeColor        != null) m_MaterialEditor.ShaderProperty(customRimShadeColor,        "Shade Color (Multiply)");
+                if(customRimShadeBorder       != null) m_MaterialEditor.ShaderProperty(customRimShadeBorder,       "Border");
+                if(customRimShadeBlur         != null) m_MaterialEditor.ShaderProperty(customRimShadeBlur,         "Blur");
+                if(customRimShadeFresnelPower != null) m_MaterialEditor.ShaderProperty(customRimShadeFresnelPower, "Fresnel Power");
+
+                EditorGUILayout.LabelField("Shared FX Mask", EditorStyles.boldLabel);
+                if(customFXMask != null)
+                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask (RGBA)"), customFXMask);
+
+                // Mask channel: 0=R / 1=G / 2=B / 3=A
+                if(customRimShadeMaskChannel != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    int ch = EditorGUILayout.Popup("Mask Channel", (int)(customRimShadeMaskChannel.floatValue + 0.5f), new string[]{ "R", "G", "B", "A" });
+                    if(EditorGUI.EndChangeCheck()) customRimShadeMaskChannel.floatValue = ch;
+                }
+
+                if(customRimShadeEnabled != null) EditorGUI.EndDisabledGroup();
+
+                EditorGUILayout.HelpBox(
+                    "視線と法線の角度から輪郭部をShade Colorの乗算で暗くするシンプルなリムシェードです。\n" +
+                    "計算はlilToon本体のRim Shadeと同等(頭方向ベースでVR両目差を抑制)ですが、" +
+                    "本体と異なりLiteシェーダーでも動作します。\n" +
+                    "ベースパスのエミッション直前で適用されるため、エミッションは暗くならず、" +
+                    "追加ライトのパスにもコストが増えません。\n" +
+                    "BorderとBlurで陰の境界位置とぼかしを調整します。アルファで全体の強度を下げられます。",
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();

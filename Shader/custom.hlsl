@@ -61,6 +61,12 @@
     float  _CustomContactShadowQuality; \
     float  _CustomContactShadowDither; \
     float  _CustomContactShadowMaskChannel; \
+    float4 _CustomRimShadeColor; \
+    float  _CustomRimShadeEnabled; \
+    float  _CustomRimShadeBorder; \
+    float  _CustomRimShadeBlur; \
+    float  _CustomRimShadeFresnelPower; \
+    float  _CustomRimShadeMaskChannel; \
     float4 _CustomMatCapLayer1Color; \
     float  _CustomMatCapLayer1Enabled; \
     float  _CustomMatCapLayer1BlendMode; \
@@ -178,7 +184,22 @@
 // ベースパス限定のここへ注入する (カメラ依存のMatCapを追加ライトで二重加算しない)。
 // UV は lilToon が計算済みの fd.uvMat を再利用 (追加計算ゼロ、liteでは頂点補間値)。
 // SSAO/コンタクトシャドウより前に合成することで、レイヤーの上からも遮蔽が暗く乗る。
+//
+// リムシェード (乗算リム陰) はさらにその前 (本ブロック最初) に適用する。
+// 計算は lilToon 本体の Rim Shade と同等 (fd.headV 基準の逆フレネル +
+// lilTooningScale + 乗算合成)。本体の Rim Shade フックは lite パスに存在しない
+// ため、ここで自前実装することで lite でも動作する。陰の上に MatCap レイヤーや
+// リム2nd が乗る順序も lilToon 本体 (rimshade -> matcap -> rim) と揃う。
 #define BEFORE_EMISSION_1ST \
+    if (_CustomRimShadeEnabled > 0.5) \
+    { \
+        float rsNvabs = abs(dot(fd.N, fd.headV)); \
+        float rsRim = pow(saturate(1.0 - rsNvabs), max(_CustomRimShadeFresnelPower, 0.01)); \
+        rsRim = lilTooningScale(_AAStrength, rsRim, _CustomRimShadeBorder, _CustomRimShadeBlur); \
+        float rsMask = lilShadowExSelectCh(LIL_SAMPLE_2D(_CustomFXMask, sampler_linear_repeat, fd.uvMain), _CustomRimShadeMaskChannel); \
+        rsRim = saturate(rsRim * _CustomRimShadeColor.a * rsMask); \
+        fd.col.rgb = lerp(fd.col.rgb, fd.col.rgb * _CustomRimShadeColor.rgb, rsRim); \
+    } \
     if (_CustomMatCapLayer1Enabled > 0.5 || _CustomMatCapLayer2Enabled > 0.5 || _CustomMatCapLayer3Enabled > 0.5) \
     { \
         float4 mcLayerMask = LIL_SAMPLE_2D(_CustomFXMask, sampler_linear_repeat, fd.uvMain); \
