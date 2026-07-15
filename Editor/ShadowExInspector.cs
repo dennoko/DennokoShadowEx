@@ -212,6 +212,9 @@ namespace dennokoworks
                 if(customFXMask2 != null)
                     m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask 2 (RGBA)"), customFXMask2);
 
+                if(GUILayout.Button("FX Mask Packer を開く"))
+                    ShadowExMaskPacker.Open();
+
                 EditorGUILayout.HelpBox(
                     "複数の質感FX(リムシェード / MatCapレイヤー / コンタクトシャドウ / 追加スペキュラ)で共有するRGBAパックマスクです。\n" +
                     "各FXのMask Channelで2枚xRGBAの計8チャンネルから使用chを選びます。\n" +
