@@ -90,16 +90,17 @@
 // (_CameraDepthTexture は lilToon 側 (lil_common_input.hlsl) で宣言済みのため追加宣言しない)
 // _CustomExtraNormalTex は専用サンプラーを宣言せず lilToon 共有サンプラー
 // (sampler_linear_repeat) を再利用する。DX11 のサンプラースロット(16)を消費しないため。
-// _CustomFXMask は複数の質感FXが共有するRGBAマスク (1サンプルで最大4マスク)。
-// こちらも共有サンプラー (sampler_linear_repeat) を再利用する。
-// サンプリングは BEFORE_EMISSION_1ST の先頭で1回だけ行い、結果を
-// lilShadowExFXMask (custom_insert.hlsl の static 変数) にキャッシュして
+// _CustomFXMask / _CustomFXMask2 は複数の質感FXが共有するRGBAマスク2枚
+// (計8チャンネル)。こちらも共有サンプラー (sampler_linear_repeat) を再利用する。
+// サンプリングは BEFORE_EMISSION_1ST の先頭 (lilShadowExSampleFXMasks) で
+// 実際に使われるマスクだけを各1回行い、static 変数へキャッシュして
 // 全FX (リムシェード/MatCapレイヤー/コンタクトシャドウ/追加スペキュラ) が使い回す。
 // MatCap追加レイヤーのテクスチャも同様に共有サンプラーを再利用する
 // (テクスチャスロットは消費するがサンプラースロットは増えない)。
 #define LIL_CUSTOM_TEXTURES \
     TEXTURE2D(_CustomExtraNormalTex); \
     TEXTURE2D(_CustomFXMask); \
+    TEXTURE2D(_CustomFXMask2); \
     TEXTURE2D(_CustomMatCapLayer1Tex); \
     TEXTURE2D(_CustomMatCapLayer2Tex); \
     TEXTURE2D(_CustomMatCapLayer3Tex);
@@ -166,7 +167,7 @@
     if (_CustomSpecEnabled > 0.5) \
     { \
         float spec = lilShadowExSpecular(fd.N, fd.V, fd.L, fd.ln, _CustomSpecSmoothness); \
-        float specMask = lilShadowExSelectCh(lilShadowExFXMask, _CustomSpecMaskChannel); \
+        float specMask = lilShadowExSelectMaskCh(_CustomSpecMaskChannel); \
         float specAmt = spec * _CustomSpecStrength * specMask * _CustomSpecColor.a; \
         specAmt = lerp(specAmt, specAmt * fd.shadowmix, _CustomSpecShadowMask); \
         float3 specCol = lerp(_CustomSpecColor.rgb, _CustomSpecColor.rgb * fd.lightColor, _CustomSpecEnableLighting); \
@@ -190,10 +191,10 @@
 // UV は lilToon が計算済みの fd.uvMat を再利用 (追加計算ゼロ、liteでは頂点補間値)。
 // SSAO/コンタクトシャドウより前に合成することで、レイヤーの上からも遮蔽が暗く乗る。
 //
-// 本ブロック先頭では共有FXマスク (_CustomFXMask) を、マスクを使うFXが1つでも
-// 有効なときに1回だけサンプルし lilShadowExFXMask にキャッシュする。
+// 本ブロック先頭では共有FXマスク2枚 (_CustomFXMask / _CustomFXMask2) のうち
+// 実際に使われる方だけを lilShadowExSampleFXMasks() で各1回サンプルしキャッシュする。
 // 以降の全FX (後段の BEFORE_BLEND_EMISSION の追加スペキュラ含む) はこの値を
-// 参照するため、有効なFXの数によらずマスクのサンプルは最大1回。
+// 参照するため、有効なFXの数によらずマスクのサンプルは最大2回 (使用マスク数分)。
 // 全FX無効時は条件が定数falseになりロック時にサンプルごとストリップされる。
 //
 // リムシェード (乗算リム陰) はマスクサンプルの直後 (合成の最初) に適用する。
@@ -202,33 +203,30 @@
 // ため、ここで自前実装することで lite でも動作する。陰の上に MatCap レイヤーや
 // リム2nd が乗る順序も lilToon 本体 (rimshade -> matcap -> rim) と揃う。
 #define BEFORE_EMISSION_1ST \
-    if (_CustomRimShadeEnabled > 0.5 || _CustomMatCapLayer1Enabled > 0.5 || _CustomMatCapLayer2Enabled > 0.5 || _CustomMatCapLayer3Enabled > 0.5 || _CustomContactShadowEnabled > 0.5 || _CustomSpecEnabled > 0.5) \
-    { \
-        lilShadowExFXMask = LIL_SAMPLE_2D(_CustomFXMask, sampler_linear_repeat, fd.uvMain); \
-    } \
+    lilShadowExSampleFXMasks(fd.uvMain); \
     if (_CustomRimShadeEnabled > 0.5) \
     { \
         float rsNvabs = abs(dot(fd.N, fd.headV)); \
         float rsRim = pow(saturate(1.0 - rsNvabs), max(_CustomRimShadeFresnelPower, 0.01)); \
         rsRim = lilTooningScale(_AAStrength, rsRim, _CustomRimShadeBorder, _CustomRimShadeBlur); \
-        float rsMask = lilShadowExSelectCh(lilShadowExFXMask, _CustomRimShadeMaskChannel); \
+        float rsMask = lilShadowExSelectMaskCh(_CustomRimShadeMaskChannel); \
         rsRim = saturate(rsRim * _CustomRimShadeColor.a * rsMask); \
         fd.col.rgb = lerp(fd.col.rgb, fd.col.rgb * _CustomRimShadeColor.rgb, rsRim); \
     } \
     if (_CustomMatCapLayer1Enabled > 0.5) \
     { \
         float4 mc1 = LIL_SAMPLE_2D(_CustomMatCapLayer1Tex, sampler_linear_repeat, fd.uvMat) * _CustomMatCapLayer1Color; \
-        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc1, fd.lightColor, fd.shadowmix, lilShadowExSelectCh(lilShadowExFXMask, _CustomMatCapLayer1MaskChannel), _CustomMatCapLayer1BlendMode, _CustomMatCapLayer1EnableLighting, _CustomMatCapLayer1ShadowMask); \
+        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc1, fd.lightColor, fd.shadowmix, lilShadowExSelectMaskCh(_CustomMatCapLayer1MaskChannel), _CustomMatCapLayer1BlendMode, _CustomMatCapLayer1EnableLighting, _CustomMatCapLayer1ShadowMask); \
     } \
     if (_CustomMatCapLayer2Enabled > 0.5) \
     { \
         float4 mc2 = LIL_SAMPLE_2D(_CustomMatCapLayer2Tex, sampler_linear_repeat, fd.uvMat) * _CustomMatCapLayer2Color; \
-        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc2, fd.lightColor, fd.shadowmix, lilShadowExSelectCh(lilShadowExFXMask, _CustomMatCapLayer2MaskChannel), _CustomMatCapLayer2BlendMode, _CustomMatCapLayer2EnableLighting, _CustomMatCapLayer2ShadowMask); \
+        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc2, fd.lightColor, fd.shadowmix, lilShadowExSelectMaskCh(_CustomMatCapLayer2MaskChannel), _CustomMatCapLayer2BlendMode, _CustomMatCapLayer2EnableLighting, _CustomMatCapLayer2ShadowMask); \
     } \
     if (_CustomMatCapLayer3Enabled > 0.5) \
     { \
         float4 mc3 = LIL_SAMPLE_2D(_CustomMatCapLayer3Tex, sampler_linear_repeat, fd.uvMat) * _CustomMatCapLayer3Color; \
-        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc3, fd.lightColor, fd.shadowmix, lilShadowExSelectCh(lilShadowExFXMask, _CustomMatCapLayer3MaskChannel), _CustomMatCapLayer3BlendMode, _CustomMatCapLayer3EnableLighting, _CustomMatCapLayer3ShadowMask); \
+        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc3, fd.lightColor, fd.shadowmix, lilShadowExSelectMaskCh(_CustomMatCapLayer3MaskChannel), _CustomMatCapLayer3BlendMode, _CustomMatCapLayer3EnableLighting, _CustomMatCapLayer3ShadowMask); \
     } \
     if (_CustomSSAOEnabled > 0.5 && LIL_ENABLED_DEPTH_TEX) \
     { \
@@ -239,7 +237,7 @@
     if (_CustomContactShadowEnabled > 0.5 && LIL_ENABLED_DEPTH_TEX) \
     { \
         float csFactor = lilShadowExContactShadow(fd.positionWS, fd.positionCS, fd.L); \
-        float csMask = lilShadowExSelectCh(lilShadowExFXMask, _CustomContactShadowMaskChannel); \
+        float csMask = lilShadowExSelectMaskCh(_CustomContactShadowMaskChannel); \
         csFactor = saturate(csFactor * _CustomContactShadowColor.a * csMask); \
         fd.col.rgb = lerp(fd.col.rgb, fd.col.rgb * _CustomContactShadowColor.rgb, csFactor); \
         fd.shadowmix *= 1.0 - csFactor; \

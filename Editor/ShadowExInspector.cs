@@ -78,7 +78,13 @@ namespace dennokoworks
         MaterialProperty customSpecShadowMask;
         MaterialProperty customSpecMaskChannel;
         MaterialProperty customFXMask;
+        MaterialProperty customFXMask2;
 
+        // 共有FXマスクのチャンネル選択肢 (0-3=Mask1 RGBA / 4-7=Mask2 RGBA)
+        private static readonly string[] maskChannelNames =
+            { "Mask1 R", "Mask1 G", "Mask1 B", "Mask1 A", "Mask2 R", "Mask2 G", "Mask2 B", "Mask2 A" };
+
+        private static bool isShowFXMask;
         private static bool isShowCustomProperties;
         private static bool isShowContactShadow;
         private static bool isShowExtraNormal;
@@ -182,6 +188,7 @@ namespace dennokoworks
             customSpecShadowMask     = FindProperty("_CustomSpecShadowMask",     props, false);
             customSpecMaskChannel    = FindProperty("_CustomSpecMaskChannel",    props, false);
             customFXMask             = FindProperty("_CustomFXMask",             props, false);
+            customFXMask2            = FindProperty("_CustomFXMask2",            props, false);
         }
 
         protected override void DrawCustomProperties(Material material)
@@ -191,6 +198,30 @@ namespace dennokoworks
             {
                 lilLanguageManager.sRenderingModeList = savedRenderingModeList;
                 savedRenderingModeList = null;
+            }
+
+            isShowFXMask = Foldout("Shared FX Mask", "Shared FX Mask", isShowFXMask);
+            if(isShowFXMask)
+            {
+                EditorGUILayout.BeginVertical(boxOuter);
+                EditorGUILayout.LabelField("Shared FX Mask", customToggleFont);
+                EditorGUILayout.BeginVertical(boxInnerHalf);
+
+                if(customFXMask != null)
+                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask 1 (RGBA)"), customFXMask);
+                if(customFXMask2 != null)
+                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask 2 (RGBA)"), customFXMask2);
+
+                EditorGUILayout.HelpBox(
+                    "複数の質感FX(リムシェード / MatCapレイヤー / コンタクトシャドウ / 追加スペキュラ)で共有するRGBAパックマスクです。\n" +
+                    "各FXのMask Channelで2枚xRGBAの計8チャンネルから使用chを選びます。\n" +
+                    "有効なFXが実際に参照しているマスクだけがサンプルされます(FXの数によらずピクセルあたり最大2サンプル)。\n" +
+                    "マスク画像のパッキング(1~4枚をRGBAへ合成)はFX Mask Packerで行えます。" +
+                    "インポート設定はsRGB(Color Texture)をオフ(Linear)推奨です。",
+                    MessageType.Info);
+
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.EndVertical();
             }
 
             isShowCustomProperties = Foldout("SSAO (Angle Based)", "SSAO (Angle Based)", isShowCustomProperties);
@@ -268,17 +299,7 @@ namespace dennokoworks
                     if(EditorGUI.EndChangeCheck()) customContactShadowDither.floatValue = dither ? 1f : 0f;
                 }
 
-                EditorGUILayout.LabelField("Shared FX Mask", EditorStyles.boldLabel);
-                if(customFXMask != null)
-                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask (RGBA)"), customFXMask);
-
-                // Mask channel: 0=R / 1=G / 2=B / 3=A
-                if(customContactShadowMaskChannel != null)
-                {
-                    EditorGUI.BeginChangeCheck();
-                    int ch = EditorGUILayout.Popup("Mask Channel", (int)(customContactShadowMaskChannel.floatValue + 0.5f), new string[]{ "R", "G", "B", "A" });
-                    if(EditorGUI.EndChangeCheck()) customContactShadowMaskChannel.floatValue = ch;
-                }
+                DrawMaskChannelPopup(customContactShadowMaskChannel);
 
                 if(customContactShadowEnabled != null) EditorGUI.EndDisabledGroup();
 
@@ -415,17 +436,7 @@ namespace dennokoworks
                 if(customRimShadeBlur         != null) m_MaterialEditor.ShaderProperty(customRimShadeBlur,         "Blur");
                 if(customRimShadeFresnelPower != null) m_MaterialEditor.ShaderProperty(customRimShadeFresnelPower, "Fresnel Power");
 
-                EditorGUILayout.LabelField("Shared FX Mask", EditorStyles.boldLabel);
-                if(customFXMask != null)
-                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask (RGBA)"), customFXMask);
-
-                // Mask channel: 0=R / 1=G / 2=B / 3=A
-                if(customRimShadeMaskChannel != null)
-                {
-                    EditorGUI.BeginChangeCheck();
-                    int ch = EditorGUILayout.Popup("Mask Channel", (int)(customRimShadeMaskChannel.floatValue + 0.5f), new string[]{ "R", "G", "B", "A" });
-                    if(EditorGUI.EndChangeCheck()) customRimShadeMaskChannel.floatValue = ch;
-                }
+                DrawMaskChannelPopup(customRimShadeMaskChannel);
 
                 if(customRimShadeEnabled != null) EditorGUI.EndDisabledGroup();
 
@@ -473,24 +484,14 @@ namespace dennokoworks
                 if(customSpecEnableLighting != null) m_MaterialEditor.ShaderProperty(customSpecEnableLighting, "Enable Lighting");
                 if(customSpecShadowMask     != null) m_MaterialEditor.ShaderProperty(customSpecShadowMask,     "Shadow Mask");
 
-                EditorGUILayout.LabelField("Shared FX Mask", EditorStyles.boldLabel);
-                if(customFXMask != null)
-                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask (RGBA)"), customFXMask);
-
-                // Mask channel: 0=R / 1=G / 2=B / 3=A
-                if(customSpecMaskChannel != null)
-                {
-                    EditorGUI.BeginChangeCheck();
-                    int ch = EditorGUILayout.Popup("Mask Channel", (int)(customSpecMaskChannel.floatValue + 0.5f), new string[]{ "R", "G", "B", "A" });
-                    if(EditorGUI.EndChangeCheck()) customSpecMaskChannel.floatValue = ch;
-                }
+                DrawMaskChannelPopup(customSpecMaskChannel);
 
                 if(customSpecEnabled != null) EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.HelpBox(
                     "エミッション段(ベースパス)で加算するスタイライズドスペキュラです。追加ライトのパスでは加算されません。\n" +
                     "メインライト方向とのハーフベクトルからBlinn-Phongハイライトを算出します(追加サンプルは共有FXマスクのみ)。\n" +
-                    "Shared FX Maskは複数の質感FXで共有する1枚のRGBAマスクです。各FXがMask Channel(R/G/B/A)で使用chを選びます。\n" +
+                    "Mask Channelは最上部のShared FX Mask(2枚xRGBA=8ch)の使用チャンネルです。\n" +
                     "Shadow Mask=1で影部のスペキュラを抑制、Enable Lighting=1でライト色に追従します。",
                     MessageType.Info);
 
@@ -535,21 +536,10 @@ namespace dennokoworks
                     if(customMatCapLayerEnableLighting[i] != null) m_MaterialEditor.ShaderProperty(customMatCapLayerEnableLighting[i], "Enable Lighting");
                     if(customMatCapLayerShadowMask[i]     != null) m_MaterialEditor.ShaderProperty(customMatCapLayerShadowMask[i],     "Shadow Mask");
 
-                    // Mask channel: 0=R / 1=G / 2=B / 3=A
-                    if(customMatCapLayerMaskChannel[i] != null)
-                    {
-                        EditorGUI.BeginChangeCheck();
-                        int ch = EditorGUILayout.Popup("Mask Channel", (int)(customMatCapLayerMaskChannel[i].floatValue + 0.5f), new string[]{ "R", "G", "B", "A" });
-                        if(EditorGUI.EndChangeCheck()) customMatCapLayerMaskChannel[i].floatValue = ch;
-                    }
+                    DrawMaskChannelPopup(customMatCapLayerMaskChannel[i]);
 
                     if(customMatCapLayerEnabled[i] != null) EditorGUI.EndDisabledGroup();
                 }
-
-                EditorGUILayout.Space();
-                EditorGUILayout.LabelField("Shared FX Mask", EditorStyles.boldLabel);
-                if(customFXMask != null)
-                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask (RGBA)"), customFXMask);
 
                 EditorGUILayout.HelpBox(
                     "lilToon本体のMatCap(1st/2nd)とは別に、最大3枚のMatCapを追加合成します。\n" +
@@ -558,12 +548,23 @@ namespace dennokoworks
                     "AddやScreenで光沢を足す場合は黒背景のMatCap、Multiplyで陰影を乗せる場合は白背景のMatCapを使ってください。\n" +
                     "ベースパス限定のため追加ライトで二重加算されず、SSAO/コンタクトシャドウはレイヤーの上からも暗く乗ります。\n" +
                     "Shadow Mask=1で影部のレイヤーを抑制、Enable Lighting=1でライト色に追従します。" +
-                    "Mask ChannelはShared FX Maskの使用チャンネルです(3レイヤーで1サンプルを共有)。",
+                    "Mask Channelは最上部のShared FX Mask(2枚xRGBA=8ch)の使用チャンネルです(マスクのサンプルは全FXで共有)。",
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();
                 EditorGUILayout.EndVertical();
             }
+        }
+
+        // 共有FXマスクのチャンネル選択ポップアップ (0-3=Mask1 RGBA / 4-7=Mask2 RGBA)。
+        // マスクのテクスチャスロット自体は最上部のShared FX Maskセクションに集約している。
+        private void DrawMaskChannelPopup(MaterialProperty prop)
+        {
+            if(prop == null) return;
+            EditorGUI.BeginChangeCheck();
+            int current = Mathf.Clamp((int)(prop.floatValue + 0.5f), 0, maskChannelNames.Length - 1);
+            int ch = EditorGUILayout.Popup("Mask Channel", current, maskChannelNames);
+            if(EditorGUI.EndChangeCheck()) prop.floatValue = ch;
         }
 
         // Tiling(スケール)のみを2要素で編集する。オフセットは扱わない (zwは0固定)。

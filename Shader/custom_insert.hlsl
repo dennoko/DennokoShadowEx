@@ -222,15 +222,16 @@ float lilShadowExContactShadow(float3 positionWS, float4 positionCS, float3 L)
 //   使用チャンネル(0=R/1=G/2=B/3=A)を選ぶ。テクスチャ枚数とサンプル数を削減する。
 //----------------------------------------------------------------------------------------------------------------------
 
-// 共有FXマスクのフラグメント内キャッシュ。
-// BEFORE_EMISSION_1ST の先頭で、マスクを使うFXがいずれか有効なときに1回だけ
-// サンプルして格納し、以降の全FX (リムシェード / MatCapレイヤー / コンタクト
-// シャドウ / 追加スペキュラ) がこの値を使い回す。これによりFXをいくつ有効に
-// してもマスクのサンプルは最大1回になる。
+// 共有FXマスク (2枚) のフラグメント内キャッシュ。
+// BEFORE_EMISSION_1ST の先頭で lilShadowExSampleFXMasks() が実際に使われる
+// マスクだけをサンプルして格納し、以降の全FX (リムシェード / MatCapレイヤー /
+// コンタクトシャドウ / 追加スペキュラ) がこの値を使い回す。これによりFXを
+// いくつ有効にしてもマスクのサンプルは最大2回 (使用中のマスク枚数分) になる。
 // static グローバルはピクセル(シェーダー実行)ごとに初期化されるためパス間・
 // ピクセル間で値が漏れることはない。初期値 1 (=マスク全開) は、万一サンプル前に
 // 参照された場合のフェイルセーフ。
-static float4 lilShadowExFXMask = float4(1.0, 1.0, 1.0, 1.0);
+static float4 lilShadowExFXMask  = float4(1.0, 1.0, 1.0, 1.0);
+static float4 lilShadowExFXMask2 = float4(1.0, 1.0, 1.0, 1.0);
 
 // RGBA から1チャンネルを選択して返す (0=R/1=G/2=B/3=A)
 float lilShadowExSelectCh(float4 packed, float channel)
@@ -239,6 +240,31 @@ float lilShadowExSelectCh(float4 packed, float channel)
     if (channel < 1.5) return packed.g;
     if (channel < 2.5) return packed.b;
     return packed.a;
+}
+
+// マスクを使うFXのうち有効なものが選択しているチャンネル (0-3=Mask1 / 4-7=Mask2)
+// を調べ、実際に参照されるマスクだけをサンプルしてキャッシュへ格納する。
+// 条件はすべてマテリアル定数なので分岐はuniform (実行時コストはほぼ無し)。
+// ロック時は定数畳み込みされ、未使用マスクのサンプルごとストリップされる。
+void lilShadowExSampleFXMasks(float2 uvMain)
+{
+    bool useMask1 = false;
+    bool useMask2 = false;
+    if (_CustomRimShadeEnabled > 0.5)      { if (_CustomRimShadeMaskChannel      < 3.5) useMask1 = true; else useMask2 = true; }
+    if (_CustomMatCapLayer1Enabled > 0.5)  { if (_CustomMatCapLayer1MaskChannel  < 3.5) useMask1 = true; else useMask2 = true; }
+    if (_CustomMatCapLayer2Enabled > 0.5)  { if (_CustomMatCapLayer2MaskChannel  < 3.5) useMask1 = true; else useMask2 = true; }
+    if (_CustomMatCapLayer3Enabled > 0.5)  { if (_CustomMatCapLayer3MaskChannel  < 3.5) useMask1 = true; else useMask2 = true; }
+    if (_CustomContactShadowEnabled > 0.5) { if (_CustomContactShadowMaskChannel < 3.5) useMask1 = true; else useMask2 = true; }
+    if (_CustomSpecEnabled > 0.5)          { if (_CustomSpecMaskChannel          < 3.5) useMask1 = true; else useMask2 = true; }
+    if (useMask1) lilShadowExFXMask  = LIL_SAMPLE_2D(_CustomFXMask,  sampler_linear_repeat, uvMain);
+    if (useMask2) lilShadowExFXMask2 = LIL_SAMPLE_2D(_CustomFXMask2, sampler_linear_repeat, uvMain);
+}
+
+// キャッシュ済みFXマスクからチャンネルを選択して返す (0-3=Mask1 RGBA / 4-7=Mask2 RGBA)
+float lilShadowExSelectMaskCh(float channel)
+{
+    if (channel < 3.5) return lilShadowExSelectCh(lilShadowExFXMask, channel);
+    return lilShadowExSelectCh(lilShadowExFXMask2, channel - 4.0);
 }
 
 // スタイライズド Blinn-Phong スペキュラ量 (0..) を返す。
