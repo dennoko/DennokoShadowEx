@@ -33,3 +33,18 @@
         _CustomRim2ndShadowMask ("Shadow Mask", Range(0,1)) = 0
         _CustomRim2ndDepthWidth ("Depth Width (px)", Range(1,10)) = 2
         _CustomRim2ndDepthThreshold ("Depth Threshold", Range(0.001,2)) = 0.1
+
+        //----------------------------------------------------------------------------------------------------------------------
+        // ShadowEx Additional Specular (base pass, stylized Blinn-Phong)
+        _CustomSpecEnabled ("Enable Add Specular", Float) = 0
+        [HDR] _CustomSpecColor ("Specular Color", Color) = (1,1,1,1)
+        _CustomSpecSmoothness ("Smoothness", Range(0,1)) = 0.9
+        _CustomSpecStrength ("Strength", Range(0,10)) = 1
+        _CustomSpecBlendMode ("Blend (0:Nrm 1:Add 2:Scrn 3:Mul)", Float) = 1
+        _CustomSpecEnableLighting ("Enable Lighting", Range(0,1)) = 1
+        _CustomSpecShadowMask ("Shadow Mask", Range(0,1)) = 1
+        _CustomSpecMaskChannel ("Mask Channel (0:R 1:G 2:B 3:A)", Float) = 0
+
+        //----------------------------------------------------------------------------------------------------------------------
+        // ShadowEx Shared FX Mask (RGBA packed : each FX picks a channel)
+        _CustomFXMask ("FX Mask (RGBA)", 2D) = "white" {}

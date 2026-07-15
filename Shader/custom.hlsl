@@ -37,14 +37,25 @@
     float  _CustomRim2ndEnableLighting; \
     float  _CustomRim2ndShadowMask; \
     float  _CustomRim2ndDepthWidth; \
-    float  _CustomRim2ndDepthThreshold;
+    float  _CustomRim2ndDepthThreshold; \
+    float4 _CustomSpecColor; \
+    float  _CustomSpecEnabled; \
+    float  _CustomSpecSmoothness; \
+    float  _CustomSpecStrength; \
+    float  _CustomSpecBlendMode; \
+    float  _CustomSpecEnableLighting; \
+    float  _CustomSpecShadowMask; \
+    float  _CustomSpecMaskChannel;
 
 // Custom textures
 // (_CameraDepthTexture は lilToon 側 (lil_common_input.hlsl) で宣言済みのため追加宣言しない)
 // _CustomExtraNormalTex は専用サンプラーを宣言せず lilToon 共有サンプラー
 // (sampler_linear_repeat) を再利用する。DX11 のサンプラースロット(16)を消費しないため。
+// _CustomFXMask は複数の質感FXが共有するRGBAマスク (1サンプルで最大4マスク)。
+// こちらも共有サンプラー (sampler_linear_repeat) を再利用する。
 #define LIL_CUSTOM_TEXTURES \
-    TEXTURE2D(_CustomExtraNormalTex);
+    TEXTURE2D(_CustomExtraNormalTex); \
+    TEXTURE2D(_CustomFXMask);
 
 // Add vertex shader output
 // SSAOの中心点計算にワールド座標を使うため強制的に v2f へ含める
@@ -79,6 +90,11 @@
 //   Mode 1 = 深度輪郭型 : _CameraDepthTexture を再利用しシルエット境界を検出。
 //            LIL_ENABLED_DEPTH_TEX が有効なワールドでのみ動作 (無効時は素通し)。
 // _CustomRim2ndEnableLighting でライト色乗算 (0=定数色 / 1=ライト追従) を補間。
+//
+// 追加スペキュラ (質感系) も同じ注入点に相乗り。ベースパス限定なので追加ライトで
+// 二重加算されず、full/lite 両パスに存在するため Lite でも効く。
+//   スタイライズド Blinn-Phong を fd.N/fd.V/fd.L から算出し、共有FXマスク
+//   (_CustomFXMask) の任意chで強度をマスク、lilBlendColor でブレンド。
 #define BEFORE_BLEND_EMISSION \
     if (_CustomRim2ndEnabled > 0.5) \
     { \
@@ -97,6 +113,15 @@
         rim2 = lerp(rim2, rim2 * fd.shadowmix, _CustomRim2ndShadowMask); \
         float3 rim2Col = lerp(_CustomRim2ndColor.rgb, _CustomRim2ndColor.rgb * fd.lightColor, _CustomRim2ndEnableLighting); \
         fd.col.rgb += rim2Col * (rim2 * _CustomRim2ndColor.a); \
+    } \
+    if (_CustomSpecEnabled > 0.5) \
+    { \
+        float spec = lilShadowExSpecular(fd.N, fd.V, fd.L, fd.ln, _CustomSpecSmoothness); \
+        float specMask = lilShadowExSelectCh(LIL_SAMPLE_2D(_CustomFXMask, sampler_linear_repeat, fd.uvMain), _CustomSpecMaskChannel); \
+        float specAmt = spec * _CustomSpecStrength * specMask * _CustomSpecColor.a; \
+        specAmt = lerp(specAmt, specAmt * fd.shadowmix, _CustomSpecShadowMask); \
+        float3 specCol = lerp(_CustomSpecColor.rgb, _CustomSpecColor.rgb * fd.lightColor, _CustomSpecEnableLighting); \
+        fd.col.rgb = lilBlendColor(fd.col.rgb, specCol, saturate(specAmt), (uint)_CustomSpecBlendMode); \
     }
 
 // Inserting a process into pixel shader

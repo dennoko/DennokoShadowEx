@@ -39,10 +39,25 @@ namespace dennokoworks
         MaterialProperty customRim2ndDepthWidth;
         MaterialProperty customRim2ndDepthThreshold;
 
+        // Additional Specular + shared FX mask
+        MaterialProperty customSpecEnabled;
+        MaterialProperty customSpecColor;
+        MaterialProperty customSpecSmoothness;
+        MaterialProperty customSpecStrength;
+        MaterialProperty customSpecBlendMode;
+        MaterialProperty customSpecEnableLighting;
+        MaterialProperty customSpecShadowMask;
+        MaterialProperty customSpecMaskChannel;
+        MaterialProperty customFXMask;
+
         private static bool isShowCustomProperties;
         private static bool isShowExtraNormal;
         private static bool isShowRim2nd;
-        private const string shaderName = "ShadowEx";
+        private static bool isShowSpec;
+        private const string shaderName = "dennokoworks/ShadowEx";
+
+        // レンダーモード一覧を一時的にコア3種へ絞る際、元の一覧を退避しておく。
+        private static string[] savedRenderingModeList;
 
         protected override void LoadCustomProperties(MaterialProperty[] props, Material material)
         {
@@ -51,6 +66,21 @@ namespace dennokoworks
             // If you want to change rendering modes in the editor, specify the shader here
             ReplaceToCustomShaders();
             isShowRenderMode = !material.shader.name.Contains("Optional");
+
+            // レンダーモードのドロップダウン整理:
+            // 最小コア化(Phase 0)で Fur/Gem/Refraction/Tessellation を削除したため、
+            // 一覧をコア3種(Opaque/Cutout/Transparent)へ絞り、未対応モードを選べなくする。
+            // sRenderingModeList はプロジェクト共有の静的配列なので、ここで一時的に差し替え、
+            // DrawCustomProperties 冒頭で必ず元へ戻し、他シェーダーへ波及させない。
+            if(savedRenderingModeList == null)
+            {
+                var full = lilLanguageManager.sRenderingModeList;
+                if(full != null && full.Length > 3)
+                {
+                    savedRenderingModeList = full;
+                    lilLanguageManager.sRenderingModeList = new[]{ full[0], full[1], full[2] };
+                }
+            }
 
             customSSAOEnabled      = FindProperty("_CustomSSAOEnabled",      props, false);
             customSSAOColor        = FindProperty("_CustomSSAOColor",        props, false);
@@ -80,10 +110,27 @@ namespace dennokoworks
             customRim2ndShadowMask     = FindProperty("_CustomRim2ndShadowMask",     props, false);
             customRim2ndDepthWidth     = FindProperty("_CustomRim2ndDepthWidth",     props, false);
             customRim2ndDepthThreshold = FindProperty("_CustomRim2ndDepthThreshold", props, false);
+
+            customSpecEnabled        = FindProperty("_CustomSpecEnabled",        props, false);
+            customSpecColor          = FindProperty("_CustomSpecColor",          props, false);
+            customSpecSmoothness     = FindProperty("_CustomSpecSmoothness",     props, false);
+            customSpecStrength       = FindProperty("_CustomSpecStrength",       props, false);
+            customSpecBlendMode      = FindProperty("_CustomSpecBlendMode",      props, false);
+            customSpecEnableLighting = FindProperty("_CustomSpecEnableLighting", props, false);
+            customSpecShadowMask     = FindProperty("_CustomSpecShadowMask",     props, false);
+            customSpecMaskChannel    = FindProperty("_CustomSpecMaskChannel",    props, false);
+            customFXMask             = FindProperty("_CustomFXMask",             props, false);
         }
 
         protected override void DrawCustomProperties(Material material)
         {
+            // レンダーモード一覧を元へ戻す(ドロップダウンは既に描画済み。他シェーダーへ波及させない)。
+            if(savedRenderingModeList != null)
+            {
+                lilLanguageManager.sRenderingModeList = savedRenderingModeList;
+                savedRenderingModeList = null;
+            }
+
             isShowCustomProperties = Foldout("SSAO (Angle Based)", "SSAO (Angle Based)", isShowCustomProperties);
             if(isShowCustomProperties)
             {
@@ -226,6 +273,62 @@ namespace dennokoworks
                 EditorGUILayout.EndVertical();
                 EditorGUILayout.EndVertical();
             }
+
+            isShowSpec = Foldout("Additional Specular", "Additional Specular", isShowSpec);
+            if(isShowSpec)
+            {
+                EditorGUILayout.BeginVertical(boxOuter);
+                EditorGUILayout.LabelField("Additional Specular", customToggleFont);
+                EditorGUILayout.BeginVertical(boxInnerHalf);
+
+                if(customSpecEnabled != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    bool specEnabled = EditorGUILayout.Toggle("Enable Add Specular", customSpecEnabled.floatValue > 0.5f);
+                    if(EditorGUI.EndChangeCheck()) customSpecEnabled.floatValue = specEnabled ? 1f : 0f;
+
+                    EditorGUI.BeginDisabledGroup(!specEnabled);
+                }
+
+                if(customSpecColor      != null) m_MaterialEditor.ShaderProperty(customSpecColor,      "Specular Color (HDR)");
+                if(customSpecSmoothness != null) m_MaterialEditor.ShaderProperty(customSpecSmoothness, "Smoothness");
+                if(customSpecStrength   != null) m_MaterialEditor.ShaderProperty(customSpecStrength,   "Strength");
+
+                // Blend mode: 0=Normal / 1=Add / 2=Screen / 3=Multiply
+                if(customSpecBlendMode != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    int blend = EditorGUILayout.Popup("Blend Mode", (int)(customSpecBlendMode.floatValue + 0.5f), new string[]{ "Normal", "Add", "Screen", "Multiply" });
+                    if(EditorGUI.EndChangeCheck()) customSpecBlendMode.floatValue = blend;
+                }
+
+                if(customSpecEnableLighting != null) m_MaterialEditor.ShaderProperty(customSpecEnableLighting, "Enable Lighting");
+                if(customSpecShadowMask     != null) m_MaterialEditor.ShaderProperty(customSpecShadowMask,     "Shadow Mask");
+
+                EditorGUILayout.LabelField("Shared FX Mask", EditorStyles.boldLabel);
+                if(customFXMask != null)
+                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask (RGBA)"), customFXMask);
+
+                // Mask channel: 0=R / 1=G / 2=B / 3=A
+                if(customSpecMaskChannel != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    int ch = EditorGUILayout.Popup("Mask Channel", (int)(customSpecMaskChannel.floatValue + 0.5f), new string[]{ "R", "G", "B", "A" });
+                    if(EditorGUI.EndChangeCheck()) customSpecMaskChannel.floatValue = ch;
+                }
+
+                if(customSpecEnabled != null) EditorGUI.EndDisabledGroup();
+
+                EditorGUILayout.HelpBox(
+                    "エミッション段(ベースパス)で加算するスタイライズドスペキュラです。追加ライトのパスでは加算されません。\n" +
+                    "メインライト方向とのハーフベクトルからBlinn-Phongハイライトを算出します(追加サンプルは共有FXマスクのみ)。\n" +
+                    "Shared FX Maskは複数の質感FXで共有する1枚のRGBAマスクです。各FXがMask Channel(R/G/B/A)で使用chを選びます。\n" +
+                    "Shadow Mask=1で影部のスペキュラを抑制、Enable Lighting=1でライト色に追従します。",
+                    MessageType.Info);
+
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.EndVertical();
+            }
         }
 
         // Tiling(スケール)のみを2要素で編集する。オフセットは扱わない (zwは0固定)。
@@ -313,7 +416,7 @@ namespace dennokoworks
 
         // You can create a menu like this
         /*
-        [MenuItem("Assets/ShadowEx/Convert material to custom shader", false, 1100)]
+        [MenuItem("Assets/dennokoworks/ShadowEx/Convert material to custom shader", false, 1100)]
         private static void ConvertMaterialToCustomShaderMenu()
         {
             if(Selection.objects.Length == 0) return;

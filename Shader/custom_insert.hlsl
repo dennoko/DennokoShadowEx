@@ -133,6 +133,32 @@ float lilShadowExDepthContour(float2 pixelCoord, float centerEyeDepth, float wid
     return edge;
 }
 
+//----------------------------------------------------------------------------------------------------------------------
+// ShadowEx : 共有FXマスク & 追加スペキュラ用ヘルパー
+//
+//   複数の質感FXが1枚のRGBAマスクを共有し、各FXが _CustomXxxMaskChannel で
+//   使用チャンネル(0=R/1=G/2=B/3=A)を選ぶ。テクスチャ枚数とサンプル数を削減する。
+//----------------------------------------------------------------------------------------------------------------------
+
+// RGBA から1チャンネルを選択して返す (0=R/1=G/2=B/3=A)
+float lilShadowExSelectCh(float4 packed, float channel)
+{
+    if (channel < 0.5) return packed.r;
+    if (channel < 1.5) return packed.g;
+    if (channel < 2.5) return packed.b;
+    return packed.a;
+}
+
+// スタイライズド Blinn-Phong スペキュラ量 (0..) を返す。
+//   smoothness(0..1) をハイライトの鋭さ (指数) に変換し、N・L>0 の受光面のみに出す。
+float lilShadowExSpecular(float3 N, float3 V, float3 L, float ndl, float smoothness)
+{
+    float3 halfDir = normalize(L + V);
+    float nh = saturate(dot(N, halfDir));
+    float specPow = exp2(saturate(smoothness) * 10.0 + 1.0); // 2..2048
+    return pow(nh, specPow) * saturate(ndl);
+}
+
 // アングルベースAO本体。遮蔽度 (0..1) を返す。
 float lilShadowExCalcSSAO(float3 positionWS, float4 positionCS)
 {
