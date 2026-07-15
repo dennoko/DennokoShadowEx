@@ -118,7 +118,12 @@ namespace dennokoworks
                 AssetDatabase.ImportAsset(savePath);
                 SetupImporter(savePath);
                 var asset = AssetDatabase.LoadAssetAtPath<Texture2D>(savePath);
-                if(asset != null) EditorGUIUtility.PingObject(asset);
+                if(asset != null)
+                {
+                    Selection.activeObject = asset;
+                    EditorGUIUtility.PingObject(asset);
+                    EditorUtility.FocusProjectWindow();
+                }
             }
             finally
             {
