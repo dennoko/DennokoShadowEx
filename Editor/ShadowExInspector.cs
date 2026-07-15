@@ -240,6 +240,9 @@ namespace dennokoworks
 
         protected override void ReplaceToCustomShaders()
         {
+            // --- 最小コア (Phase 0) : 標準5モード x Outline有無 + Lite のみを提供する ---
+            // 対応するコンテナ(.lilcontainer)のみ残し、Tess/Fur/Gem/Refraction/OutlineOnly/
+            // Overlay/Multi は削除済み。ここでは残した20バリアントを Shader.Find する。
             lts         = Shader.Find(shaderName + "/lilToon");
             ltsc        = Shader.Find("Hidden/" + shaderName + "/Cutout");
             ltst        = Shader.Find("Hidden/" + shaderName + "/Transparent");
@@ -251,22 +254,6 @@ namespace dennokoworks
             ltsto       = Shader.Find("Hidden/" + shaderName + "/TransparentOutline");
             ltsoto      = Shader.Find("Hidden/" + shaderName + "/OnePassTransparentOutline");
             ltstto      = Shader.Find("Hidden/" + shaderName + "/TwoPassTransparentOutline");
-
-            ltsoo       = Shader.Find(shaderName + "/[Optional] OutlineOnly/Opaque");
-            ltscoo      = Shader.Find(shaderName + "/[Optional] OutlineOnly/Cutout");
-            ltstoo      = Shader.Find(shaderName + "/[Optional] OutlineOnly/Transparent");
-
-            ltstess     = Shader.Find("Hidden/" + shaderName + "/Tessellation/Opaque");
-            ltstessc    = Shader.Find("Hidden/" + shaderName + "/Tessellation/Cutout");
-            ltstesst    = Shader.Find("Hidden/" + shaderName + "/Tessellation/Transparent");
-            ltstessot   = Shader.Find("Hidden/" + shaderName + "/Tessellation/OnePassTransparent");
-            ltstesstt   = Shader.Find("Hidden/" + shaderName + "/Tessellation/TwoPassTransparent");
-
-            ltstesso    = Shader.Find("Hidden/" + shaderName + "/Tessellation/OpaqueOutline");
-            ltstessco   = Shader.Find("Hidden/" + shaderName + "/Tessellation/CutoutOutline");
-            ltstessto   = Shader.Find("Hidden/" + shaderName + "/Tessellation/TransparentOutline");
-            ltstessoto  = Shader.Find("Hidden/" + shaderName + "/Tessellation/OnePassTransparentOutline");
-            ltstesstto  = Shader.Find("Hidden/" + shaderName + "/Tessellation/TwoPassTransparentOutline");
 
             ltsl        = Shader.Find(shaderName + "/lilToonLite");
             ltslc       = Shader.Find("Hidden/" + shaderName + "/Lite/Cutout");
@@ -280,27 +267,48 @@ namespace dennokoworks
             ltsloto     = Shader.Find("Hidden/" + shaderName + "/Lite/OnePassTransparentOutline");
             ltsltto     = Shader.Find("Hidden/" + shaderName + "/Lite/TwoPassTransparentOutline");
 
-            ltsref      = Shader.Find("Hidden/" + shaderName + "/Refraction");
-            ltsrefb     = Shader.Find("Hidden/" + shaderName + "/RefractionBlur");
-            ltsfur      = Shader.Find("Hidden/" + shaderName + "/Fur");
-            ltsfurc     = Shader.Find("Hidden/" + shaderName + "/FurCutout");
-            ltsfurtwo   = Shader.Find("Hidden/" + shaderName + "/FurTwoPass");
-            ltsfuro     = Shader.Find(shaderName + "/[Optional] FurOnly/Transparent");
-            ltsfuroc    = Shader.Find(shaderName + "/[Optional] FurOnly/Cutout");
-            ltsfurotwo  = Shader.Find(shaderName + "/[Optional] FurOnly/TwoPass");
-            ltsgem      = Shader.Find("Hidden/" + shaderName + "/Gem");
-            ltsfs       = Shader.Find(shaderName + "/[Optional] FakeShadow");
+            // --- 削除したバリアントのフォールバック ---
+            // lilMaterialUtils.SetupMaterialWithRenderingMode は null チェック無しで
+            // material.shader へ代入するため、削除モードを選ぶとマテリアルが壊れる(ピンク化)。
+            // これを防ぐため、削除したバリアントは最寄りのコアシェーダーに向けておく
+            // (追加シェーダーは存在しないので「最小コア」は維持される)。
+            ltsoo       = ltso;   // OutlineOnly -> Outline
+            ltscoo      = ltsco;
+            ltstoo      = ltsto;
 
-            ltsover     = Shader.Find(shaderName + "/[Optional] Overlay");
-            ltsoover    = Shader.Find(shaderName + "/[Optional] OverlayOnePass");
-            ltslover    = Shader.Find(shaderName + "/[Optional] LiteOverlay");
-            ltsloover   = Shader.Find(shaderName + "/[Optional] LiteOverlayOnePass");
+            ltstess     = lts;    // Tessellation -> 非Tess相当
+            ltstessc    = ltsc;
+            ltstesst    = ltst;
+            ltstessot   = ltsot;
+            ltstesstt   = ltstt;
+            ltstesso    = ltso;
+            ltstessco   = ltsco;
+            ltstessto   = ltsto;
+            ltstessoto  = ltsoto;
+            ltstesstto  = ltstto;
 
-            ltsm        = Shader.Find(shaderName + "/lilToonMulti");
-            ltsmo       = Shader.Find("Hidden/" + shaderName + "/MultiOutline");
-            ltsmref     = Shader.Find("Hidden/" + shaderName + "/MultiRefraction");
-            ltsmfur     = Shader.Find("Hidden/" + shaderName + "/MultiFur");
-            ltsmgem     = Shader.Find("Hidden/" + shaderName + "/MultiGem");
+            ltsref      = ltst;   // Refraction -> Transparent
+            ltsrefb     = ltst;
+            ltsgem      = ltst;   // Gem -> Transparent
+
+            ltsfur      = lts;    // Fur -> 非Fur相当
+            ltsfurc     = ltsc;
+            ltsfurtwo   = ltstt;
+            ltsfuro     = lts;
+            ltsfuroc    = ltsc;
+            ltsfurotwo  = ltstt;
+            ltsfs       = lts;    // FakeShadow -> Opaque
+
+            ltsover     = lts;    // Overlay -> Opaque / Lite
+            ltsoover    = lts;
+            ltslover    = ltsl;
+            ltsloover   = ltsl;
+
+            ltsm        = lts;    // Multi -> 単一コア相当
+            ltsmo       = ltso;
+            ltsmref     = ltst;
+            ltsmfur     = lts;
+            ltsmgem     = ltst;
         }
 
         // You can create a menu like this
