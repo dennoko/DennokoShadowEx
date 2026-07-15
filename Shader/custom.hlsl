@@ -6,6 +6,9 @@
 // AO計算の本体は custom_insert.hlsl の lilShadowExCalcSSAO() に実装。
 // _CameraDepthTexture が有効な場合のみ動作する(VRChatではシャドウ付き
 // Directional Light が存在するワールドで有効になる)。無効時は素通し。
+//
+// コンタクトシャドウ (Screen Space Shadows) も同様に深度テクスチャを再利用する。
+// ref: https://panoskarabelas.com/posts/screen_space_shadows/
 //----------------------------------------------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -45,7 +48,15 @@
     float  _CustomSpecBlendMode; \
     float  _CustomSpecEnableLighting; \
     float  _CustomSpecShadowMask; \
-    float  _CustomSpecMaskChannel;
+    float  _CustomSpecMaskChannel; \
+    float4 _CustomContactShadowColor; \
+    float  _CustomContactShadowEnabled; \
+    float  _CustomContactShadowLength; \
+    float  _CustomContactShadowThickness; \
+    float  _CustomContactShadowBias; \
+    float  _CustomContactShadowQuality; \
+    float  _CustomContactShadowDither; \
+    float  _CustomContactShadowMaskChannel;
 
 // Custom textures
 // (_CameraDepthTexture は lilToon 側 (lil_common_input.hlsl) で宣言済みのため追加宣言しない)
@@ -127,10 +138,25 @@
 // Inserting a process into pixel shader
 // エミッション加算の直前に適用することで、発光部分を暗くせずにAOをかける。
 // LIL_ENABLED_DEPTH_TEX: 深度テクスチャが無いワールドでは自動的に無効化される。
+//
+// コンタクトシャドウ (Screen Space Shadows) も同じ注入点に相乗り。
+// ref: https://panoskarabelas.com/posts/screen_space_shadows/
+// ここは full/lite 両パスに存在し #ifndef LIL_PASS_FORWARDADD の内側 (ベースパス限定)
+// なので、追加ライトパスでの二重適用・コスト増が無い。
+// 遮蔽係数で専用の影色を乗算合成し、fd.shadowmix にも書き込むことで
+// 後段のリム2nd/追加スペキュラの Shadow Mask とも連動する。
 #define BEFORE_EMISSION_1ST \
     if (_CustomSSAOEnabled > 0.5 && LIL_ENABLED_DEPTH_TEX) \
     { \
         float aoRate = lilShadowExCalcSSAO(fd.positionWS, fd.positionCS); \
         float aoFactor = saturate(pow(saturate(aoRate), _CustomSSAOPower) * _CustomSSAOStrength); \
         fd.col.rgb = lerp(fd.col.rgb, _CustomSSAOColor.rgb, aoFactor * _CustomSSAOColor.a); \
+    } \
+    if (_CustomContactShadowEnabled > 0.5 && LIL_ENABLED_DEPTH_TEX) \
+    { \
+        float csFactor = lilShadowExContactShadow(fd.positionWS, fd.positionCS, fd.L); \
+        float csMask = lilShadowExSelectCh(LIL_SAMPLE_2D(_CustomFXMask, sampler_linear_repeat, fd.uvMain), _CustomContactShadowMaskChannel); \
+        csFactor = saturate(csFactor * _CustomContactShadowColor.a * csMask); \
+        fd.col.rgb = lerp(fd.col.rgb, fd.col.rgb * _CustomContactShadowColor.rgb, csFactor); \
+        fd.shadowmix *= 1.0 - csFactor; \
     }

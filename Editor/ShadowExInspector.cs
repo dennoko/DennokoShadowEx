@@ -39,6 +39,16 @@ namespace dennokoworks
         MaterialProperty customRim2ndDepthWidth;
         MaterialProperty customRim2ndDepthThreshold;
 
+        // Contact Shadow (Screen Space Shadows)
+        MaterialProperty customContactShadowEnabled;
+        MaterialProperty customContactShadowColor;
+        MaterialProperty customContactShadowLength;
+        MaterialProperty customContactShadowThickness;
+        MaterialProperty customContactShadowBias;
+        MaterialProperty customContactShadowQuality;
+        MaterialProperty customContactShadowDither;
+        MaterialProperty customContactShadowMaskChannel;
+
         // Additional Specular + shared FX mask
         MaterialProperty customSpecEnabled;
         MaterialProperty customSpecColor;
@@ -51,6 +61,7 @@ namespace dennokoworks
         MaterialProperty customFXMask;
 
         private static bool isShowCustomProperties;
+        private static bool isShowContactShadow;
         private static bool isShowExtraNormal;
         private static bool isShowRim2nd;
         private static bool isShowSpec;
@@ -92,6 +103,15 @@ namespace dennokoworks
             customSSAOBias         = FindProperty("_CustomSSAOBias",         props, false);
             customSSAODither       = FindProperty("_CustomSSAODither",       props, false);
             customSSAOQuality      = FindProperty("_CustomSSAOQuality",      props, false);
+
+            customContactShadowEnabled     = FindProperty("_CustomContactShadowEnabled",     props, false);
+            customContactShadowColor       = FindProperty("_CustomContactShadowColor",       props, false);
+            customContactShadowLength      = FindProperty("_CustomContactShadowLength",      props, false);
+            customContactShadowThickness   = FindProperty("_CustomContactShadowThickness",   props, false);
+            customContactShadowBias        = FindProperty("_CustomContactShadowBias",        props, false);
+            customContactShadowQuality     = FindProperty("_CustomContactShadowQuality",     props, false);
+            customContactShadowDither      = FindProperty("_CustomContactShadowDither",      props, false);
+            customContactShadowMaskChannel = FindProperty("_CustomContactShadowMaskChannel", props, false);
 
             customExtraNormalEnabled   = FindProperty("_CustomExtraNormalEnabled",   props, false);
             customExtraNormalTex       = FindProperty("_CustomExtraNormalTex",       props, false);
@@ -169,6 +189,60 @@ namespace dennokoworks
                 EditorGUILayout.HelpBox(
                     "SSAOは_CameraDepthTextureが有効な環境でのみ描画されます。" +
                     "VRChatではシャドウ付きDirectional Lightが存在するワールドで有効になります。",
+                    MessageType.Info);
+
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.EndVertical();
+            }
+
+            isShowContactShadow = Foldout("Contact Shadow", "Contact Shadow", isShowContactShadow);
+            if(isShowContactShadow)
+            {
+                EditorGUILayout.BeginVertical(boxOuter);
+                EditorGUILayout.LabelField("Contact Shadow", customToggleFont);
+                EditorGUILayout.BeginVertical(boxInnerHalf);
+
+                if(customContactShadowEnabled != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    bool csEnabled = EditorGUILayout.Toggle("Enable Contact Shadow", customContactShadowEnabled.floatValue > 0.5f);
+                    if(EditorGUI.EndChangeCheck()) customContactShadowEnabled.floatValue = csEnabled ? 1f : 0f;
+
+                    EditorGUI.BeginDisabledGroup(!csEnabled);
+                }
+
+                if(customContactShadowColor     != null) m_MaterialEditor.ShaderProperty(customContactShadowColor,     "Shadow Color (Multiply)");
+                if(customContactShadowLength    != null) m_MaterialEditor.ShaderProperty(customContactShadowLength,    "Ray Length (m)");
+                if(customContactShadowThickness != null) m_MaterialEditor.ShaderProperty(customContactShadowThickness, "Thickness (m)");
+                if(customContactShadowBias      != null) m_MaterialEditor.ShaderProperty(customContactShadowBias,      "Depth Bias (m)");
+                if(customContactShadowQuality   != null) m_MaterialEditor.ShaderProperty(customContactShadowQuality,   "Quality (x8 steps)");
+
+                if(customContactShadowDither != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    bool dither = EditorGUILayout.Toggle("Dither (IGN)", customContactShadowDither.floatValue > 0.5f);
+                    if(EditorGUI.EndChangeCheck()) customContactShadowDither.floatValue = dither ? 1f : 0f;
+                }
+
+                EditorGUILayout.LabelField("Shared FX Mask", EditorStyles.boldLabel);
+                if(customFXMask != null)
+                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask (RGBA)"), customFXMask);
+
+                // Mask channel: 0=R / 1=G / 2=B / 3=A
+                if(customContactShadowMaskChannel != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    int ch = EditorGUILayout.Popup("Mask Channel", (int)(customContactShadowMaskChannel.floatValue + 0.5f), new string[]{ "R", "G", "B", "A" });
+                    if(EditorGUI.EndChangeCheck()) customContactShadowMaskChannel.floatValue = ch;
+                }
+
+                if(customContactShadowEnabled != null) EditorGUI.EndDisabledGroup();
+
+                EditorGUILayout.HelpBox(
+                    "深度バッファをライト方向へレイマーチして近距離の接地影を出すスクリーンスペースシャドウです。\n" +
+                    "SSAO同様、シャドウ付きDirectional Lightのあるワールドでのみ動作します(無効時は素通し)。\n" +
+                    "画面内に映っている遮蔽物しか影を落とせないため、Ray Lengthは短め(数cm)の近距離用途が前提です。\n" +
+                    "影はShadow Colorの乗算で暗くなり、リム2nd/追加スペキュラのShadow Maskとも連動します。",
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();

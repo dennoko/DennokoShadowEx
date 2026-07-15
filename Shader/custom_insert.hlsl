@@ -23,18 +23,19 @@
 static const float LIL_SHADOWEX_SSAO_ROTATIONS[6] = {0.401, 1.532, 2.401, 3.665, 4.510, 5.788};
 static const float LIL_SHADOWEX_SSAO_DISTANCES[6] = {0.187, 0.331, 0.399, 0.542, 0.712, 0.874};
 
-// ビュー空間位置が投影されるピクセルの深度 (linear eye depth) を取得する。
+// ビュー空間位置が投影されるピクセルの深度 (linear eye depth) と投影先UVを取得する。
 // 画面外・カメラ背後・深度未書き込み (far plane) の場合は false を返す。
-bool lilShadowExSampleEyeDepth(float3 positionVS, out float eyeDepth)
+bool lilShadowExSampleEyeDepthUV(float3 positionVS, out float eyeDepth, out float2 uv)
 {
     eyeDepth = 0.0;
+    uv = 0.0;
 
     float4 positionCS = mul(LIL_MATRIX_P, float4(positionVS, 1.0));
     if (positionCS.w < 0.0001) return false;
 
     // lilToonの提供する変換関数を利用して、プラットフォームごとの差異やレンダーテクスチャ反転を解決する
     float4 positionSS = lilTransformCStoSS(positionCS);
-    float2 uv = positionSS.xy / positionSS.w;
+    uv = positionSS.xy / positionSS.w;
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return false;
 
     float2 texel = uv * LIL_SCREENPARAMS.xy;
@@ -48,6 +49,13 @@ bool lilShadowExSampleEyeDepth(float3 positionVS, out float eyeDepth)
     // ミラー (oblique projection) も考慮した linear eye depth 変換
     eyeDepth = LIL_TO_LINEARDEPTH(rawDepth, texel);
     return true;
+}
+
+// 従来シグネチャ (SSAO用)。UV不要な呼び出し側はこちらを使う。
+bool lilShadowExSampleEyeDepth(float3 positionVS, out float eyeDepth)
+{
+    float2 uvUnused;
+    return lilShadowExSampleEyeDepthUV(positionVS, eyeDepth, uvUnused);
 }
 
 // offsetVS のピクセルを通る視線レイ上で、深度 eyeDepth にある点を復元する
@@ -131,6 +139,55 @@ float lilShadowExDepthContour(float2 pixelCoord, float centerEyeDepth, float wid
         edge = max(edge, smoothstep(threshold, threshold * 2.0, neighborDepth - centerEyeDepth));
     }
     return edge;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+// ShadowEx : コンタクトシャドウ (Screen Space Shadows)
+// ref: https://panoskarabelas.com/posts/screen_space_shadows/
+//
+//   フラグメントのビュー空間位置からライト方向へレイマーチし、各ステップで
+//   レイ位置を投影した先のシーン深度と比較。レイがシーン表面より奥
+//   (bias < delta < thickness) に潜ったら遮蔽 = 影と判定する。
+//   シャドウマップでは拾えない近距離の接地影・パーツ間の細かい影を補完する。
+//   _CameraDepthTexture を再利用するため追加サンプラーは消費しない。
+//
+//   スクリーンスペースの制約: 画面内に映っている遮蔽物しか影を落とせないため、
+//   レイ長は短め (数cm〜) の近距離コンタクト影用途に留めるのが前提。
+//----------------------------------------------------------------------------------------------------------------------
+float lilShadowExContactShadow(float3 positionWS, float4 positionCS, float3 L)
+{
+    // 平行投影では視線レイによる深度比較が成り立たないためスキップ
+    if (!lilIsPerspective()) return 0.0;
+
+    float3 centerVS = mul(LIL_MATRIX_V, float4(positionWS, 1.0)).xyz;
+    float3 lightDirVS = normalize(mul((float3x3)LIL_MATRIX_V, L));
+
+    uint steps = (uint)clamp(_CustomContactShadowQuality + 0.5, 1.0, 4.0) * 8u; // 8..32
+    float stepLen = _CustomContactShadowLength / (float)steps;
+
+    // レイ開始位置を IGN でディザしてステップ間のバンディングをノイズ化 (任意)
+    float jitter = _CustomContactShadowDither > 0.5 ? lilShadowExIGN(positionCS.xy) : 0.5;
+    float3 rayPos = centerVS + lightDirVS * (stepLen * jitter);
+
+    for (uint i = 0; i < steps; i++)
+    {
+        rayPos += lightDirVS * stepLen;
+
+        float sceneDepth;
+        float2 uv;
+        if (!lilShadowExSampleEyeDepthUV(rayPos, sceneDepth, uv)) continue;
+
+        // レイがシーン表面より奥に潜っている量 (eye depth 差)
+        float delta = (-rayPos.z) - sceneDepth;
+        if (delta > _CustomContactShadowBias && delta < _CustomContactShadowThickness)
+        {
+            // スクリーン端フェード: 画面外の遮蔽情報が無いことによる影の切れ目を目立たなくする
+            float2 edge = 1.0 - abs(uv * 2.0 - 1.0);
+            float fade = smoothstep(0.0, 0.2, min(edge.x, edge.y));
+            return fade;
+        }
+    }
+    return 0.0;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
