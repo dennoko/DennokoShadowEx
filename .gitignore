@@ -2,3 +2,5 @@
 /Docs.meta
 /Editor.meta
 /Shader.meta
+
+*.meta
