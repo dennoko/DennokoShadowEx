@@ -153,6 +153,14 @@ float lilShadowExDepthContour(float2 pixelCoord, float centerEyeDepth, float wid
 //
 //   スクリーンスペースの制約: 画面内に映っている遮蔽物しか影を落とせないため、
 //   レイ長は短め (数cm〜) の近距離コンタクト影用途に留めるのが前提。
+//
+//   境界のぼかし (_CustomContactShadowBlur):
+//   アバターシェーダーは単一パス完結でポストブラーが使えないため、レイマーチ内で
+//   解析的にソフト化する (追加サンプルコスト無し)。
+//     1. 遮蔽窓の平滑化 : bias..thickness の binary 判定を smoothstep 化し、
+//        レイの潜り込みが浅い (= 影の境界付近の) ピクセルほど薄い影にする
+//     2. ペナンブラ近似 : 遮蔽物が接地点から遠いほど影を弱める (実影の半影と同傾向)
+//   さらに IGN ディザがソフト値と混ざることでステップ起因のバンディングも均される。
 //----------------------------------------------------------------------------------------------------------------------
 float lilShadowExContactShadow(float3 positionWS, float4 positionCS, float3 L)
 {
@@ -169,6 +177,13 @@ float lilShadowExContactShadow(float3 positionWS, float4 positionCS, float3 L)
     float jitter = _CustomContactShadowDither > 0.5 ? lilShadowExIGN(positionCS.xy) : 0.5;
     float3 rayPos = centerVS + lightDirVS * (stepLen * jitter);
 
+    // 遮蔽窓 (bias..thickness) の両端のソフト幅。Blur=0 で従来の binary 判定と一致する。
+    float blur = saturate(_CustomContactShadowBlur);
+    float riseEnd = _CustomContactShadowBias + max(_CustomContactShadowThickness * blur, 1e-4);
+    float fallStart = _CustomContactShadowThickness * (1.0 - blur);
+
+    float occlusion = 0.0;
+
     for (uint i = 0; i < steps; i++)
     {
         rayPos += lightDirVS * stepLen;
@@ -179,15 +194,23 @@ float lilShadowExContactShadow(float3 positionWS, float4 positionCS, float3 L)
 
         // レイがシーン表面より奥に潜っている量 (eye depth 差)
         float delta = (-rayPos.z) - sceneDepth;
-        if (delta > _CustomContactShadowBias && delta < _CustomContactShadowThickness)
-        {
-            // スクリーン端フェード: 画面外の遮蔽情報が無いことによる影の切れ目を目立たなくする
-            float2 edge = 1.0 - abs(uv * 2.0 - 1.0);
-            float fade = smoothstep(0.0, 0.2, min(edge.x, edge.y));
-            return fade;
-        }
+
+        // 1. 遮蔽窓の平滑化: 潜り込みが浅いほど薄く、thickness を超えるほど薄く
+        float soft = smoothstep(_CustomContactShadowBias, riseEnd, delta)
+                   * (1.0 - smoothstep(fallStart, _CustomContactShadowThickness, delta));
+
+        // 2. ペナンブラ近似: 遮蔽物までの距離 (レイ進行度) に応じて影を弱める
+        float rayT = (float)(i + 1) / (float)steps;
+        float distFade = 1.0 - rayT * blur;
+
+        // スクリーン端フェード: 画面外の遮蔽情報が無いことによる影の切れ目を目立たなくする
+        float2 edge = 1.0 - abs(uv * 2.0 - 1.0);
+        float edgeFade = smoothstep(0.0, 0.2, min(edge.x, edge.y));
+
+        occlusion = max(occlusion, soft * distFade * edgeFade);
+        if (occlusion >= 0.999) break; // これ以上濃くならないため打ち切り
     }
-    return 0.0;
+    return occlusion;
 }
 
 //----------------------------------------------------------------------------------------------------------------------

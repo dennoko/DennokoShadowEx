@@ -52,6 +52,7 @@
         _CustomContactShadowLength ("Ray Length", Range(0.005,0.5)) = 0.05
         _CustomContactShadowThickness ("Thickness", Range(0.001,0.2)) = 0.02
         _CustomContactShadowBias ("Depth Bias", Range(0,0.05)) = 0.005
+        _CustomContactShadowBlur ("Blur", Range(0,1)) = 0.5
         [IntRange] _CustomContactShadowQuality ("Quality (x8 steps)", Range(1,4)) = 2
         _CustomContactShadowDither ("Dither (IGN)", Float) = 1
         _CustomContactShadowMaskChannel ("Mask Channel (0:R 1:G 2:B 3:A)", Float) = 0

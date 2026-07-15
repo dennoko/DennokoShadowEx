@@ -45,6 +45,7 @@ namespace dennokoworks
         MaterialProperty customContactShadowLength;
         MaterialProperty customContactShadowThickness;
         MaterialProperty customContactShadowBias;
+        MaterialProperty customContactShadowBlur;
         MaterialProperty customContactShadowQuality;
         MaterialProperty customContactShadowDither;
         MaterialProperty customContactShadowMaskChannel;
@@ -109,6 +110,7 @@ namespace dennokoworks
             customContactShadowLength      = FindProperty("_CustomContactShadowLength",      props, false);
             customContactShadowThickness   = FindProperty("_CustomContactShadowThickness",   props, false);
             customContactShadowBias        = FindProperty("_CustomContactShadowBias",        props, false);
+            customContactShadowBlur        = FindProperty("_CustomContactShadowBlur",        props, false);
             customContactShadowQuality     = FindProperty("_CustomContactShadowQuality",     props, false);
             customContactShadowDither      = FindProperty("_CustomContactShadowDither",      props, false);
             customContactShadowMaskChannel = FindProperty("_CustomContactShadowMaskChannel", props, false);
@@ -215,6 +217,7 @@ namespace dennokoworks
                 if(customContactShadowLength    != null) m_MaterialEditor.ShaderProperty(customContactShadowLength,    "Ray Length (m)");
                 if(customContactShadowThickness != null) m_MaterialEditor.ShaderProperty(customContactShadowThickness, "Thickness (m)");
                 if(customContactShadowBias      != null) m_MaterialEditor.ShaderProperty(customContactShadowBias,      "Depth Bias (m)");
+                if(customContactShadowBlur      != null) m_MaterialEditor.ShaderProperty(customContactShadowBlur,      "Blur");
                 if(customContactShadowQuality   != null) m_MaterialEditor.ShaderProperty(customContactShadowQuality,   "Quality (x8 steps)");
 
                 if(customContactShadowDither != null)
@@ -242,6 +245,7 @@ namespace dennokoworks
                     "深度バッファをライト方向へレイマーチして近距離の接地影を出すスクリーンスペースシャドウです。\n" +
                     "SSAO同様、シャドウ付きDirectional Lightのあるワールドでのみ動作します(無効時は素通し)。\n" +
                     "画面内に映っている遮蔽物しか影を落とせないため、Ray Lengthは短め(数cm)の近距離用途が前提です。\n" +
+                    "Blurで境界をぼかせます(0=くっきり)。遮蔽の深さと遮蔽物までの距離に応じて解析的にソフト化するため追加コストはありません。\n" +
                     "影はShadow Colorの乗算で暗くなり、リム2nd/追加スペキュラのShadow Maskとも連動します。",
                     MessageType.Info);
 
