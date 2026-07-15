@@ -19,7 +19,15 @@ namespace dennokoworks
         MaterialProperty customSSAODither;
         MaterialProperty customSSAOQuality;
 
+        // Extra Normal Maps (2 packed)
+        MaterialProperty customExtraNormalEnabled;
+        MaterialProperty customExtraNormalTex;
+        MaterialProperty customExtraNormalStrengthA;
+        MaterialProperty customExtraNormalStrengthB;
+        MaterialProperty customExtraNormalBlend;
+
         private static bool isShowCustomProperties;
+        private static bool isShowExtraNormal;
         private const string shaderName = "ShadowEx";
 
         protected override void LoadCustomProperties(MaterialProperty[] props, Material material)
@@ -40,6 +48,12 @@ namespace dennokoworks
             customSSAOBias         = FindProperty("_CustomSSAOBias",         props, false);
             customSSAODither       = FindProperty("_CustomSSAODither",       props, false);
             customSSAOQuality      = FindProperty("_CustomSSAOQuality",      props, false);
+
+            customExtraNormalEnabled   = FindProperty("_CustomExtraNormalEnabled",   props, false);
+            customExtraNormalTex       = FindProperty("_CustomExtraNormalTex",       props, false);
+            customExtraNormalStrengthA = FindProperty("_CustomExtraNormalStrengthA", props, false);
+            customExtraNormalStrengthB = FindProperty("_CustomExtraNormalStrengthB", props, false);
+            customExtraNormalBlend     = FindProperty("_CustomExtraNormalBlend",     props, false);
         }
 
         protected override void DrawCustomProperties(Material material)
@@ -82,6 +96,39 @@ namespace dennokoworks
                 EditorGUILayout.HelpBox(
                     "SSAOは_CameraDepthTextureが有効な環境でのみ描画されます。" +
                     "VRChatではシャドウ付きDirectional Lightが存在するワールドで有効になります。",
+                    MessageType.Info);
+
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.EndVertical();
+            }
+
+            isShowExtraNormal = Foldout("Extra Normals (Packed)", "Extra Normals (Packed)", isShowExtraNormal);
+            if(isShowExtraNormal)
+            {
+                EditorGUILayout.BeginVertical(boxOuter);
+                EditorGUILayout.LabelField("Extra Normals (Packed)", customToggleFont);
+                EditorGUILayout.BeginVertical(boxInnerHalf);
+
+                if(customExtraNormalEnabled != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    bool exEnabled = EditorGUILayout.Toggle("Enable Extra Normals", customExtraNormalEnabled.floatValue > 0.5f);
+                    if(EditorGUI.EndChangeCheck()) customExtraNormalEnabled.floatValue = exEnabled ? 1f : 0f;
+
+                    EditorGUI.BeginDisabledGroup(!exEnabled);
+                }
+
+                if(customExtraNormalTex       != null) m_MaterialEditor.ShaderProperty(customExtraNormalTex,       "Packed Normals (RG=1st / BA=2nd)");
+                if(customExtraNormalStrengthA != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthA, "Strength A (RG)");
+                if(customExtraNormalStrengthB != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthB, "Strength B (BA)");
+                if(customExtraNormalBlend     != null) m_MaterialEditor.ShaderProperty(customExtraNormalBlend,     "Blend");
+
+                if(customExtraNormalEnabled != null) EditorGUI.EndDisabledGroup();
+
+                EditorGUILayout.HelpBox(
+                    "1枚のRGBAに2枚分のノーマルをパックします (RG=1枚目のXY / BA=2枚目のXY)。" +
+                    "テクスチャのインポート設定は「Normal map」ではなく「Default」かつ sRGB(Color Texture) をオフ(Linear)にしてください。" +
+                    "Normal mapインポートはチャンネルをスウィズルするためパッキングが壊れます。",
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();

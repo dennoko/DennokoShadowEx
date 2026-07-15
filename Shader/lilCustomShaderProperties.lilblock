@@ -11,3 +11,11 @@
         _CustomSSAOBias ("Depth Bias", Range(0,0.05)) = 0.005
         _CustomSSAODither ("Dither (IGN)", Float) = 1
         [IntRange] _CustomSSAOQuality ("Quality (x12 samples)", Range(1,4)) = 2
+
+        //----------------------------------------------------------------------------------------------------------------------
+        // ShadowEx Extra Normal Maps (2 packed in 1 RGBA : RG=1st / BA=2nd, Linear)
+        _CustomExtraNormalEnabled ("Enable Extra Normals", Float) = 0
+        _CustomExtraNormalTex ("Packed Normals (RG=1st / BA=2nd, Linear)", 2D) = "grey" {}
+        _CustomExtraNormalStrengthA ("Strength A (RG)", Range(0,10)) = 1
+        _CustomExtraNormalStrengthB ("Strength B (BA)", Range(0,10)) = 1
+        _CustomExtraNormalBlend ("Blend", Range(0,1)) = 1

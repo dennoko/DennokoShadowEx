@@ -84,6 +84,33 @@ float lilShadowExSampleOcclusion(float3 offsetPos, float3 centerVS, float center
     return max(0.0, d) * falloff;
 }
 
+//----------------------------------------------------------------------------------------------------------------------
+// ShadowEx : 追加ノーマルマップ (1枚のRGBAに2枚分をパック)
+//
+//   RG = 1枚目の接線空間法線XY, BA = 2枚目の接線空間法線XY。Zはシェーダーで復元する。
+//   1サンプルで2枚分の法線を扱えるためテクスチャ枚数を削減できる。
+//
+//   ※ パックテクスチャは Unity の「Normal map」ではなく「Default (sRGBオフ/Linear)」で
+//      インポートすること。Normal map インポートは DXT5nm の AG スウィズルを行うため、
+//      RG/BA パッキングが壊れる。
+//----------------------------------------------------------------------------------------------------------------------
+
+// 0..1 の2ch から接線空間法線を復元する。strength で XY を増幅する (UDN的に Z が潰れる)。
+float3 lilShadowExDecodeNormalCh(float2 ch, float strength)
+{
+    float2 xy = (ch * 2.0 - 1.0) * strength;
+    float z = sqrt(saturate(1.0 - dot(xy, xy)));
+    return float3(xy, z);
+}
+
+// パックRGBAから2枚をUDN合成し、単一の接線空間法線を返す。
+float3 lilShadowExCombinePackedNormals(float4 packed, float strengthA, float strengthB)
+{
+    float3 nA = lilShadowExDecodeNormalCh(packed.rg, strengthA);
+    float3 nB = lilShadowExDecodeNormalCh(packed.ba, strengthB);
+    return normalize(float3(nA.xy + nB.xy, nA.z * nB.z));
+}
+
 // アングルベースAO本体。遮蔽度 (0..1) を返す。
 float lilShadowExCalcSSAO(float3 positionWS, float4 positionCS)
 {
