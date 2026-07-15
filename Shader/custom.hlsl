@@ -9,6 +9,8 @@
 //
 // コンタクトシャドウ (Screen Space Shadows) も同様に深度テクスチャを再利用する。
 // ref: https://panoskarabelas.com/posts/screen_space_shadows/
+//
+// MatCap追加レイヤー (最大3) : fd.uvMat + 共有サンプラーで追加のMatCapを合成する。
 //----------------------------------------------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -58,7 +60,25 @@
     float  _CustomContactShadowBlurStrength; \
     float  _CustomContactShadowQuality; \
     float  _CustomContactShadowDither; \
-    float  _CustomContactShadowMaskChannel;
+    float  _CustomContactShadowMaskChannel; \
+    float4 _CustomMatCapLayer1Color; \
+    float  _CustomMatCapLayer1Enabled; \
+    float  _CustomMatCapLayer1BlendMode; \
+    float  _CustomMatCapLayer1EnableLighting; \
+    float  _CustomMatCapLayer1ShadowMask; \
+    float  _CustomMatCapLayer1MaskChannel; \
+    float4 _CustomMatCapLayer2Color; \
+    float  _CustomMatCapLayer2Enabled; \
+    float  _CustomMatCapLayer2BlendMode; \
+    float  _CustomMatCapLayer2EnableLighting; \
+    float  _CustomMatCapLayer2ShadowMask; \
+    float  _CustomMatCapLayer2MaskChannel; \
+    float4 _CustomMatCapLayer3Color; \
+    float  _CustomMatCapLayer3Enabled; \
+    float  _CustomMatCapLayer3BlendMode; \
+    float  _CustomMatCapLayer3EnableLighting; \
+    float  _CustomMatCapLayer3ShadowMask; \
+    float  _CustomMatCapLayer3MaskChannel;
 
 // Custom textures
 // (_CameraDepthTexture は lilToon 側 (lil_common_input.hlsl) で宣言済みのため追加宣言しない)
@@ -66,9 +86,14 @@
 // (sampler_linear_repeat) を再利用する。DX11 のサンプラースロット(16)を消費しないため。
 // _CustomFXMask は複数の質感FXが共有するRGBAマスク (1サンプルで最大4マスク)。
 // こちらも共有サンプラー (sampler_linear_repeat) を再利用する。
+// MatCap追加レイヤーのテクスチャも同様に共有サンプラーを再利用する
+// (テクスチャスロットは消費するがサンプラースロットは増えない)。
 #define LIL_CUSTOM_TEXTURES \
     TEXTURE2D(_CustomExtraNormalTex); \
-    TEXTURE2D(_CustomFXMask);
+    TEXTURE2D(_CustomFXMask); \
+    TEXTURE2D(_CustomMatCapLayer1Tex); \
+    TEXTURE2D(_CustomMatCapLayer2Tex); \
+    TEXTURE2D(_CustomMatCapLayer3Tex);
 
 // Add vertex shader output
 // SSAOの中心点計算にワールド座標を使うため強制的に v2f へ含める
@@ -147,7 +172,32 @@
 // なので、追加ライトパスでの二重適用・コスト増が無い。
 // 遮蔽係数で専用の影色を乗算合成し、fd.shadowmix にも書き込むことで
 // 後段のリム2nd/追加スペキュラの Shadow Mask とも連動する。
+//
+// MatCap追加レイヤー (最大3) も同じ注入点の先頭に相乗り。
+// lilToon の MatCap フック (BEFORE_MATCAP 等) は FORWARDADD でも走るため使わず、
+// ベースパス限定のここへ注入する (カメラ依存のMatCapを追加ライトで二重加算しない)。
+// UV は lilToon が計算済みの fd.uvMat を再利用 (追加計算ゼロ、liteでは頂点補間値)。
+// SSAO/コンタクトシャドウより前に合成することで、レイヤーの上からも遮蔽が暗く乗る。
 #define BEFORE_EMISSION_1ST \
+    if (_CustomMatCapLayer1Enabled > 0.5 || _CustomMatCapLayer2Enabled > 0.5 || _CustomMatCapLayer3Enabled > 0.5) \
+    { \
+        float4 mcLayerMask = LIL_SAMPLE_2D(_CustomFXMask, sampler_linear_repeat, fd.uvMain); \
+        if (_CustomMatCapLayer1Enabled > 0.5) \
+        { \
+            float4 mc1 = LIL_SAMPLE_2D(_CustomMatCapLayer1Tex, sampler_linear_repeat, fd.uvMat) * _CustomMatCapLayer1Color; \
+            fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc1, fd.lightColor, fd.shadowmix, lilShadowExSelectCh(mcLayerMask, _CustomMatCapLayer1MaskChannel), _CustomMatCapLayer1BlendMode, _CustomMatCapLayer1EnableLighting, _CustomMatCapLayer1ShadowMask); \
+        } \
+        if (_CustomMatCapLayer2Enabled > 0.5) \
+        { \
+            float4 mc2 = LIL_SAMPLE_2D(_CustomMatCapLayer2Tex, sampler_linear_repeat, fd.uvMat) * _CustomMatCapLayer2Color; \
+            fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc2, fd.lightColor, fd.shadowmix, lilShadowExSelectCh(mcLayerMask, _CustomMatCapLayer2MaskChannel), _CustomMatCapLayer2BlendMode, _CustomMatCapLayer2EnableLighting, _CustomMatCapLayer2ShadowMask); \
+        } \
+        if (_CustomMatCapLayer3Enabled > 0.5) \
+        { \
+            float4 mc3 = LIL_SAMPLE_2D(_CustomMatCapLayer3Tex, sampler_linear_repeat, fd.uvMat) * _CustomMatCapLayer3Color; \
+            fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc3, fd.lightColor, fd.shadowmix, lilShadowExSelectCh(mcLayerMask, _CustomMatCapLayer3MaskChannel), _CustomMatCapLayer3BlendMode, _CustomMatCapLayer3EnableLighting, _CustomMatCapLayer3ShadowMask); \
+        } \
+    } \
     if (_CustomSSAOEnabled > 0.5 && LIL_ENABLED_DEPTH_TEX) \
     { \
         float aoRate = lilShadowExCalcSSAO(fd.positionWS, fd.positionCS); \

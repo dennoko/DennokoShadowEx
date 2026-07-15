@@ -241,6 +241,24 @@ float lilShadowExSpecular(float3 N, float3 V, float3 L, float ndl, float smoothn
     return pow(nh, specPow) * saturate(ndl);
 }
 
+//----------------------------------------------------------------------------------------------------------------------
+// ShadowEx : MatCap追加レイヤー (最大3) の合成ヘルパー
+//
+//   lilToon 本体の MatCap (1st/2nd) とは独立した追加レイヤー。UV は lilToon が
+//   計算済みの fd.uvMat を再利用し、テクスチャは共有サンプラーでサンプルする。
+//   合成は lilToon 本体の MatCap と同じ流儀:
+//     - EnableLighting : レイヤー色にライト色を乗算 (0=定数色 / 1=ライト追従)
+//     - ShadowMask     : 影部 (fd.shadowmix が小さい部分) でレイヤーを減衰
+//     - lilBlendColor  : Normal/Add/Screen/Multiply の4モード
+//   mc はテクスチャ色 × レイヤー色 (aはブレンド強度)、mask は共有FXマスクの選択ch。
+//----------------------------------------------------------------------------------------------------------------------
+float3 lilShadowExMatCapLayer(float3 col, float4 mc, float3 lightColor, float shadowmix, float mask, float blendMode, float enableLighting, float shadowMask)
+{
+    mc.rgb = lerp(mc.rgb, mc.rgb * lightColor, enableLighting);
+    mc.a = lerp(mc.a, mc.a * shadowmix, shadowMask);
+    return lilBlendColor(col, mc.rgb, saturate(mc.a * mask), (uint)blendMode);
+}
+
 // アングルベースAO本体。遮蔽度 (0..1) を返す。
 float lilShadowExCalcSSAO(float3 positionWS, float4 positionCS)
 {

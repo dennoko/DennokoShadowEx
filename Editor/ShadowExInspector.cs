@@ -51,6 +51,15 @@ namespace dennokoworks
         MaterialProperty customContactShadowDither;
         MaterialProperty customContactShadowMaskChannel;
 
+        // MatCap Layers (up to 3)
+        readonly MaterialProperty[] customMatCapLayerEnabled        = new MaterialProperty[3];
+        readonly MaterialProperty[] customMatCapLayerTex            = new MaterialProperty[3];
+        readonly MaterialProperty[] customMatCapLayerColor          = new MaterialProperty[3];
+        readonly MaterialProperty[] customMatCapLayerBlendMode      = new MaterialProperty[3];
+        readonly MaterialProperty[] customMatCapLayerEnableLighting = new MaterialProperty[3];
+        readonly MaterialProperty[] customMatCapLayerShadowMask     = new MaterialProperty[3];
+        readonly MaterialProperty[] customMatCapLayerMaskChannel    = new MaterialProperty[3];
+
         // Additional Specular + shared FX mask
         MaterialProperty customSpecEnabled;
         MaterialProperty customSpecColor;
@@ -67,6 +76,7 @@ namespace dennokoworks
         private static bool isShowExtraNormal;
         private static bool isShowRim2nd;
         private static bool isShowSpec;
+        private static bool isShowMatCapLayers;
         private const string shaderName = "dennokoworks/ShadowEx";
 
         // レンダーモード一覧を一時的にコア3種へ絞る際、元の一覧を退避しておく。
@@ -134,6 +144,18 @@ namespace dennokoworks
             customRim2ndShadowMask     = FindProperty("_CustomRim2ndShadowMask",     props, false);
             customRim2ndDepthWidth     = FindProperty("_CustomRim2ndDepthWidth",     props, false);
             customRim2ndDepthThreshold = FindProperty("_CustomRim2ndDepthThreshold", props, false);
+
+            for(int i = 0; i < 3; i++)
+            {
+                string prefix = "_CustomMatCapLayer" + (i + 1);
+                customMatCapLayerEnabled[i]        = FindProperty(prefix + "Enabled",        props, false);
+                customMatCapLayerTex[i]            = FindProperty(prefix + "Tex",            props, false);
+                customMatCapLayerColor[i]          = FindProperty(prefix + "Color",          props, false);
+                customMatCapLayerBlendMode[i]      = FindProperty(prefix + "BlendMode",      props, false);
+                customMatCapLayerEnableLighting[i] = FindProperty(prefix + "EnableLighting", props, false);
+                customMatCapLayerShadowMask[i]     = FindProperty(prefix + "ShadowMask",     props, false);
+                customMatCapLayerMaskChannel[i]    = FindProperty(prefix + "MaskChannel",    props, false);
+            }
 
             customSpecEnabled        = FindProperty("_CustomSpecEnabled",        props, false);
             customSpecColor          = FindProperty("_CustomSpecColor",          props, false);
@@ -406,6 +428,73 @@ namespace dennokoworks
                     "メインライト方向とのハーフベクトルからBlinn-Phongハイライトを算出します(追加サンプルは共有FXマスクのみ)。\n" +
                     "Shared FX Maskは複数の質感FXで共有する1枚のRGBAマスクです。各FXがMask Channel(R/G/B/A)で使用chを選びます。\n" +
                     "Shadow Mask=1で影部のスペキュラを抑制、Enable Lighting=1でライト色に追従します。",
+                    MessageType.Info);
+
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.EndVertical();
+            }
+
+            isShowMatCapLayers = Foldout("MatCap Layers", "MatCap Layers", isShowMatCapLayers);
+            if(isShowMatCapLayers)
+            {
+                EditorGUILayout.BeginVertical(boxOuter);
+                EditorGUILayout.LabelField("MatCap Layers", customToggleFont);
+                EditorGUILayout.BeginVertical(boxInnerHalf);
+
+                for(int i = 0; i < 3; i++)
+                {
+                    if(i > 0) EditorGUILayout.Space();
+                    EditorGUILayout.LabelField("Layer " + (i + 1), EditorStyles.boldLabel);
+
+                    if(customMatCapLayerEnabled[i] != null)
+                    {
+                        EditorGUI.BeginChangeCheck();
+                        bool layerEnabled = EditorGUILayout.Toggle("Enable", customMatCapLayerEnabled[i].floatValue > 0.5f);
+                        if(EditorGUI.EndChangeCheck()) customMatCapLayerEnabled[i].floatValue = layerEnabled ? 1f : 0f;
+
+                        EditorGUI.BeginDisabledGroup(!layerEnabled);
+                    }
+
+                    if(customMatCapLayerTex[i] != null && customMatCapLayerColor[i] != null)
+                        m_MaterialEditor.TexturePropertySingleLine(new GUIContent("MatCap / Color (HDR)"), customMatCapLayerTex[i], customMatCapLayerColor[i]);
+                    else if(customMatCapLayerTex[i] != null)
+                        m_MaterialEditor.TexturePropertySingleLine(new GUIContent("MatCap"), customMatCapLayerTex[i]);
+
+                    // Blend mode: 0=Normal / 1=Add / 2=Screen / 3=Multiply
+                    if(customMatCapLayerBlendMode[i] != null)
+                    {
+                        EditorGUI.BeginChangeCheck();
+                        int blend = EditorGUILayout.Popup("Blend Mode", (int)(customMatCapLayerBlendMode[i].floatValue + 0.5f), new string[]{ "Normal", "Add", "Screen", "Multiply" });
+                        if(EditorGUI.EndChangeCheck()) customMatCapLayerBlendMode[i].floatValue = blend;
+                    }
+
+                    if(customMatCapLayerEnableLighting[i] != null) m_MaterialEditor.ShaderProperty(customMatCapLayerEnableLighting[i], "Enable Lighting");
+                    if(customMatCapLayerShadowMask[i]     != null) m_MaterialEditor.ShaderProperty(customMatCapLayerShadowMask[i],     "Shadow Mask");
+
+                    // Mask channel: 0=R / 1=G / 2=B / 3=A
+                    if(customMatCapLayerMaskChannel[i] != null)
+                    {
+                        EditorGUI.BeginChangeCheck();
+                        int ch = EditorGUILayout.Popup("Mask Channel", (int)(customMatCapLayerMaskChannel[i].floatValue + 0.5f), new string[]{ "R", "G", "B", "A" });
+                        if(EditorGUI.EndChangeCheck()) customMatCapLayerMaskChannel[i].floatValue = ch;
+                    }
+
+                    if(customMatCapLayerEnabled[i] != null) EditorGUI.EndDisabledGroup();
+                }
+
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Shared FX Mask", EditorStyles.boldLabel);
+                if(customFXMask != null)
+                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask (RGBA)"), customFXMask);
+
+                EditorGUILayout.HelpBox(
+                    "lilToon本体のMatCap(1st/2nd)とは別に、最大3枚のMatCapを追加合成します。\n" +
+                    "UVはlilToonのMatCap UV(fd.uvMat)を再利用し、サンプラーも共有するため軽量です" +
+                    "(有効なレイヤー数ぶんのテクスチャサンプルのみ追加)。\n" +
+                    "AddやScreenで光沢を足す場合は黒背景のMatCap、Multiplyで陰影を乗せる場合は白背景のMatCapを使ってください。\n" +
+                    "ベースパス限定のため追加ライトで二重加算されず、SSAO/コンタクトシャドウはレイヤーの上からも暗く乗ります。\n" +
+                    "Shadow Mask=1で影部のレイヤーを抑制、Enable Lighting=1でライト色に追従します。" +
+                    "Mask ChannelはShared FX Maskの使用チャンネルです(3レイヤーで1サンプルを共有)。",
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();

@@ -59,5 +59,29 @@
         _CustomContactShadowMaskChannel ("Mask Channel (0:R 1:G 2:B 3:A)", Float) = 0
 
         //----------------------------------------------------------------------------------------------------------------------
+        // ShadowEx MatCap Layers (up to 3 additional matcaps, sampled with fd.uvMat)
+        _CustomMatCapLayer1Enabled ("Enable MatCap Layer 1", Float) = 0
+        _CustomMatCapLayer1Tex ("Layer 1 MatCap", 2D) = "black" {}
+        [HDR] _CustomMatCapLayer1Color ("Layer 1 Color", Color) = (1,1,1,1)
+        _CustomMatCapLayer1BlendMode ("Blend (0:Nrm 1:Add 2:Scrn 3:Mul)", Float) = 1
+        _CustomMatCapLayer1EnableLighting ("Enable Lighting", Range(0,1)) = 1
+        _CustomMatCapLayer1ShadowMask ("Shadow Mask", Range(0,1)) = 0
+        _CustomMatCapLayer1MaskChannel ("Mask Channel (0:R 1:G 2:B 3:A)", Float) = 0
+        _CustomMatCapLayer2Enabled ("Enable MatCap Layer 2", Float) = 0
+        _CustomMatCapLayer2Tex ("Layer 2 MatCap", 2D) = "black" {}
+        [HDR] _CustomMatCapLayer2Color ("Layer 2 Color", Color) = (1,1,1,1)
+        _CustomMatCapLayer2BlendMode ("Blend (0:Nrm 1:Add 2:Scrn 3:Mul)", Float) = 1
+        _CustomMatCapLayer2EnableLighting ("Enable Lighting", Range(0,1)) = 1
+        _CustomMatCapLayer2ShadowMask ("Shadow Mask", Range(0,1)) = 0
+        _CustomMatCapLayer2MaskChannel ("Mask Channel (0:R 1:G 2:B 3:A)", Float) = 0
+        _CustomMatCapLayer3Enabled ("Enable MatCap Layer 3", Float) = 0
+        _CustomMatCapLayer3Tex ("Layer 3 MatCap", 2D) = "black" {}
+        [HDR] _CustomMatCapLayer3Color ("Layer 3 Color", Color) = (1,1,1,1)
+        _CustomMatCapLayer3BlendMode ("Blend (0:Nrm 1:Add 2:Scrn 3:Mul)", Float) = 1
+        _CustomMatCapLayer3EnableLighting ("Enable Lighting", Range(0,1)) = 1
+        _CustomMatCapLayer3ShadowMask ("Shadow Mask", Range(0,1)) = 0
+        _CustomMatCapLayer3MaskChannel ("Mask Channel (0:R 1:G 2:B 3:A)", Float) = 0
+
+        //----------------------------------------------------------------------------------------------------------------------
         // ShadowEx Shared FX Mask (RGBA packed : each FX picks a channel)
         _CustomFXMask ("FX Mask (RGBA)", 2D) = "white" {}
