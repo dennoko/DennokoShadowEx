@@ -13,13 +13,16 @@
         [IntRange] _CustomSSAOQuality ("Quality (x12 samples)", Range(1,4)) = 2
 
         //----------------------------------------------------------------------------------------------------------------------
-        // ShadowEx Extra Normal Maps (2 packed in 1 RGBA : RG=1st / BA=2nd, Linear)
+        // ShadowEx Extra Normal Maps (2 individual tangent-space normal maps, FX-mask ranged)
         _CustomExtraNormalEnabled ("Enable Extra Normals", Float) = 0
-        _CustomExtraNormalTex ("Packed Normals (RG=1st / BA=2nd, Linear)", 2D) = "grey" {}
-        _CustomExtraNormalStrengthA ("Strength 1st (RG)", Range(0,10)) = 1
-        _CustomExtraNormalStrengthB ("Strength 2nd (BA)", Range(0,10)) = 1
+        [Normal] _CustomExtraNormal1stTex ("Normal Map 1st", 2D) = "bump" {}
+        _CustomExtraNormalStrengthA ("Strength 1st", Range(0,10)) = 1
         _CustomExtraNormal1stScale ("1st Tiling", Vector) = (1,1,0,0)
+        _CustomExtraNormal1stMaskChannel ("1st Mask Channel (0-3:Mask1 RGBA / 4-7:Mask2 RGBA)", Float) = 0
+        [Normal] _CustomExtraNormal2ndTex ("Normal Map 2nd", 2D) = "bump" {}
+        _CustomExtraNormalStrengthB ("Strength 2nd", Range(0,10)) = 1
         _CustomExtraNormal2ndScale ("2nd Tiling", Vector) = (1,1,0,0)
+        _CustomExtraNormal2ndMaskChannel ("2nd Mask Channel (0-3:Mask1 RGBA / 4-7:Mask2 RGBA)", Float) = 0
 
         //----------------------------------------------------------------------------------------------------------------------
         // ShadowEx Rim Light 2nd (0=Fresnel / 1=Depth Contour)

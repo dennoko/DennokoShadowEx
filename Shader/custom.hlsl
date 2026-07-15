@@ -33,6 +33,8 @@
     float  _CustomExtraNormalStrengthB; \
     float4 _CustomExtraNormal1stScale; \
     float4 _CustomExtraNormal2ndScale; \
+    float  _CustomExtraNormal1stMaskChannel; \
+    float  _CustomExtraNormal2ndMaskChannel; \
     float4 _CustomRim2ndColor; \
     float  _CustomRim2ndEnabled; \
     float  _CustomRim2ndMode; \
@@ -88,8 +90,9 @@
 
 // Custom textures
 // (_CameraDepthTexture は lilToon 側 (lil_common_input.hlsl) で宣言済みのため追加宣言しない)
-// _CustomExtraNormalTex は専用サンプラーを宣言せず lilToon 共有サンプラー
-// (sampler_linear_repeat) を再利用する。DX11 のサンプラースロット(16)を消費しないため。
+// 追加ノーマルマップ 2枚 (_CustomExtraNormal1stTex / _CustomExtraNormal2ndTex) は
+// 専用サンプラーを宣言せず lilToon 共有サンプラー (sampler_linear_repeat) を再利用する。
+// DX11 のサンプラースロット(16)を消費しないため。
 // _CustomFXMask / _CustomFXMask2 は複数の質感FXが共有するRGBAマスク2枚
 // (計8チャンネル)。こちらも共有サンプラー (sampler_linear_repeat) を再利用する。
 // サンプリングは BEFORE_EMISSION_1ST の先頭 (lilShadowExSampleFXMasks) で
@@ -98,7 +101,8 @@
 // MatCap追加レイヤーのテクスチャも同様に共有サンプラーを再利用する
 // (テクスチャスロットは消費するがサンプラースロットは増えない)。
 #define LIL_CUSTOM_TEXTURES \
-    TEXTURE2D(_CustomExtraNormalTex); \
+    TEXTURE2D(_CustomExtraNormal1stTex); \
+    TEXTURE2D(_CustomExtraNormal2ndTex); \
     TEXTURE2D(_CustomFXMask); \
     TEXTURE2D(_CustomFXMask2); \
     TEXTURE2D(_CustomMatCapLayer1Tex); \
@@ -109,25 +113,26 @@
 // SSAOの中心点計算にワールド座標を使うため強制的に v2f へ含める
 #define LIL_V2F_FORCE_POSITION_WS
 
-// 追加ノーマルマップ (1枚のRGBAに2枚分パック) を lilToon のノーマル処理内で合成する。
+// 追加ノーマルマップ (個別の接線空間ノーマルマップ2枚) を lilToon のノーマル処理内で合成する。
 // lilToon は BEFORE_NORMAL_2ND の直後に normalmap を fd.N へ変換 (world) し、
 // fd.ln / fd.uvMat / fd.reflectionN / fd.matcapN 等の派生値もまとめて再計算する。
 // そのため接線空間の normalmap にディテールを積むことで、追加処理を書かずとも
 // ライティング・MatCap・リム・反射すべてに反映される。
-// 1st(RG)と2nd(BA)は別UV(タイリング)でサンプルするため同一テクスチャを2回サンプルする
-// (テクスチャ「枚数」は1枚のまま。サンプラーも共有サンプラーを再利用)。
+// 1st/2nd はそれぞれ専用テクスチャを別UV(タイリング)でサンプルし、lilToon 本体と
+// 同じ lilUnpackNormalScale (DXT5nm対応) + lilBlendNormal で合成する。
+// 各法線の Strength には共有FXマスクの選択chを掛けて範囲制御する。マスクは
+// このフックが BEFORE_EMISSION_1ST のキャッシュより前に展開されるため
+// lilShadowExSampleNormalMasks() で必要な分だけ直接サンプルする (最大2サンプル)。
 // ※ この注入は lilToon のノーマルマップ機能が有効なとき (LIL_FEATURE_NORMAL) に動作する。
 #define BEFORE_NORMAL_2ND \
     if (_CustomExtraNormalEnabled > 0.5) \
     { \
-        float2 exUV1 = fd.uv0 * _CustomExtraNormal1stScale.xy; \
-        float2 exUV2 = fd.uv0 * _CustomExtraNormal2ndScale.xy; \
-        float2 exChA = LIL_SAMPLE_2D(_CustomExtraNormalTex, sampler_linear_repeat, exUV1).rg; \
-        float2 exChB = LIL_SAMPLE_2D(_CustomExtraNormalTex, sampler_linear_repeat, exUV2).ba; \
-        float3 exNA = lilShadowExDecodeNormalCh(exChA, _CustomExtraNormalStrengthA); \
-        float3 exNB = lilShadowExDecodeNormalCh(exChB, _CustomExtraNormalStrengthB); \
-        normalmap = lilShadowExBlendNormalUDN(normalmap, exNA); \
-        normalmap = lilShadowExBlendNormalUDN(normalmap, exNB); \
+        float exMask1, exMask2; \
+        lilShadowExSampleNormalMasks(fd.uvMain, _CustomExtraNormal1stMaskChannel, _CustomExtraNormal2ndMaskChannel, exMask1, exMask2); \
+        float4 exTex1 = LIL_SAMPLE_2D(_CustomExtraNormal1stTex, sampler_linear_repeat, fd.uv0 * _CustomExtraNormal1stScale.xy); \
+        float4 exTex2 = LIL_SAMPLE_2D(_CustomExtraNormal2ndTex, sampler_linear_repeat, fd.uv0 * _CustomExtraNormal2ndScale.xy); \
+        normalmap = lilBlendNormal(normalmap, lilUnpackNormalScale(exTex1, _CustomExtraNormalStrengthA * exMask1)); \
+        normalmap = lilBlendNormal(normalmap, lilUnpackNormalScale(exTex2, _CustomExtraNormalStrengthB * exMask2)); \
     }
 
 // リムライト2nd (フレネル型 / 深度輪郭型) を合成する。

@@ -93,30 +93,17 @@ float lilShadowExSampleOcclusion(float3 offsetPos, float3 centerVS, float center
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-// ShadowEx : 追加ノーマルマップ (1枚のRGBAに2枚分をパック)
+// ShadowEx : 追加ノーマルマップ (個別の接線空間ノーマルマップ2枚)
 //
-//   RG = 1枚目の接線空間法線XY, BA = 2枚目の接線空間法線XY。Zはシェーダーで復元する。
-//   1サンプルで2枚分の法線を扱えるためテクスチャ枚数を削減できる。
+//   1st/2nd それぞれ専用テクスチャを別UV(タイリング)でサンプルし、lilToon 本体と
+//   同じ lilUnpackNormalScale + lilBlendNormal で合成する (custom.hlsl の
+//   BEFORE_NORMAL_2ND を参照)。各法線の Strength には共有FXマスクの選択chを掛けて
+//   範囲制御できる。マスクサンプルは lilShadowExSampleNormalMasks() が担う
+//   (共有FXマスクヘルパー節に定義)。
 //
-//   ※ パックテクスチャは Unity の「Normal map」ではなく「Default (sRGBオフ/Linear)」で
-//      インポートすること。Normal map インポートは DXT5nm の AG スウィズルを行うため、
-//      RG/BA パッキングが壊れる。
+//   ※ テクスチャは Unity の「Normal map」でインポートすること (DXT5nm対応の
+//      lilUnpackNormalScale が AG スウィズルを解く)。
 //----------------------------------------------------------------------------------------------------------------------
-
-// 0..1 の2ch から接線空間法線を復元する。strength で XY を増幅する (UDN的に Z が潰れる)。
-float3 lilShadowExDecodeNormalCh(float2 ch, float strength)
-{
-    float2 xy = (ch * 2.0 - 1.0) * strength;
-    float z = sqrt(saturate(1.0 - dot(xy, xy)));
-    return float3(xy, z);
-}
-
-// UDNブレンド: ベース法線 (lilToonの1st等) の Z を保ちつつ、ディテール法線の XY を積む。
-// 加算のみで正規化1回と軽量。強い凹凸でも破綻しにくい。
-float3 lilShadowExBlendNormalUDN(float3 baseN, float3 detailN)
-{
-    return normalize(float3(baseN.xy + detailN.xy, baseN.z));
-}
 
 //----------------------------------------------------------------------------------------------------------------------
 // ShadowEx : 深度輪郭リムライト用ヘルパー
@@ -265,6 +252,23 @@ float lilShadowExSelectMaskCh(float channel)
 {
     if (channel < 3.5) return lilShadowExSelectCh(lilShadowExFXMask, channel);
     return lilShadowExSelectCh(lilShadowExFXMask2, channel - 4.0);
+}
+
+// 追加法線 (BEFORE_NORMAL_2ND) 用の共有FXマスクサンプル。
+// このフックは BEFORE_EMISSION_1ST のマスクキャッシュより前に展開されるため
+// キャッシュを使えない。2枚の法線が参照するチャンネル (ch1/ch2) から必要なマスク
+// だけを各1回サンプルし (使用マスク枚数分、最大2サンプル)、それぞれの選択ch値を返す。
+// マスク未使用側 (どちらの ch もそのマスクを参照しない場合) は 1 (=全開) のまま。
+void lilShadowExSampleNormalMasks(float2 uvMain, float ch1, float ch2, out float mask1Val, out float mask2Val)
+{
+    bool useMask1 = (ch1 < 3.5) || (ch2 < 3.5);
+    bool useMask2 = (ch1 > 3.5) || (ch2 > 3.5);
+    float4 m1 = float4(1.0, 1.0, 1.0, 1.0);
+    float4 m2 = float4(1.0, 1.0, 1.0, 1.0);
+    if (useMask1) m1 = LIL_SAMPLE_2D(_CustomFXMask,  sampler_linear_repeat, uvMain);
+    if (useMask2) m2 = LIL_SAMPLE_2D(_CustomFXMask2, sampler_linear_repeat, uvMain);
+    mask1Val = (ch1 < 3.5) ? lilShadowExSelectCh(m1, ch1) : lilShadowExSelectCh(m2, ch1 - 4.0);
+    mask2Val = (ch2 < 3.5) ? lilShadowExSelectCh(m1, ch2) : lilShadowExSelectCh(m2, ch2 - 4.0);
 }
 
 // スタイライズド Blinn-Phong スペキュラ量 (0..) を返す。

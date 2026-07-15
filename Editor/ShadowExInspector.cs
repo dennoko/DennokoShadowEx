@@ -21,11 +21,14 @@ namespace dennokoworks
 
         // Extra Normal Maps (2 packed)
         MaterialProperty customExtraNormalEnabled;
-        MaterialProperty customExtraNormalTex;
+        MaterialProperty customExtraNormal1stTex;
+        MaterialProperty customExtraNormal2ndTex;
         MaterialProperty customExtraNormalStrengthA;
         MaterialProperty customExtraNormalStrengthB;
         MaterialProperty customExtraNormal1stScale;
         MaterialProperty customExtraNormal2ndScale;
+        MaterialProperty customExtraNormal1stMaskChannel;
+        MaterialProperty customExtraNormal2ndMaskChannel;
 
         // Rim Light 2nd
         MaterialProperty customRim2ndEnabled;
@@ -142,12 +145,15 @@ namespace dennokoworks
             customContactShadowDither      = FindProperty("_CustomContactShadowDither",      props, false);
             customContactShadowMaskChannel = FindProperty("_CustomContactShadowMaskChannel", props, false);
 
-            customExtraNormalEnabled   = FindProperty("_CustomExtraNormalEnabled",   props, false);
-            customExtraNormalTex       = FindProperty("_CustomExtraNormalTex",       props, false);
-            customExtraNormalStrengthA = FindProperty("_CustomExtraNormalStrengthA", props, false);
-            customExtraNormalStrengthB = FindProperty("_CustomExtraNormalStrengthB", props, false);
-            customExtraNormal1stScale  = FindProperty("_CustomExtraNormal1stScale",  props, false);
-            customExtraNormal2ndScale  = FindProperty("_CustomExtraNormal2ndScale",  props, false);
+            customExtraNormalEnabled        = FindProperty("_CustomExtraNormalEnabled",        props, false);
+            customExtraNormal1stTex         = FindProperty("_CustomExtraNormal1stTex",         props, false);
+            customExtraNormal2ndTex         = FindProperty("_CustomExtraNormal2ndTex",         props, false);
+            customExtraNormalStrengthA      = FindProperty("_CustomExtraNormalStrengthA",      props, false);
+            customExtraNormalStrengthB      = FindProperty("_CustomExtraNormalStrengthB",      props, false);
+            customExtraNormal1stScale       = FindProperty("_CustomExtraNormal1stScale",       props, false);
+            customExtraNormal2ndScale       = FindProperty("_CustomExtraNormal2ndScale",       props, false);
+            customExtraNormal1stMaskChannel = FindProperty("_CustomExtraNormal1stMaskChannel", props, false);
+            customExtraNormal2ndMaskChannel = FindProperty("_CustomExtraNormal2ndMaskChannel", props, false);
 
             customRim2ndEnabled        = FindProperty("_CustomRim2ndEnabled",        props, false);
             customRim2ndMode           = FindProperty("_CustomRim2ndMode",           props, false);
@@ -319,11 +325,11 @@ namespace dennokoworks
                 EditorGUILayout.EndVertical();
             }
 
-            isShowExtraNormal = Foldout("Extra Normals (Packed)", "Extra Normals (Packed)", isShowExtraNormal);
+            isShowExtraNormal = Foldout("Extra Normals", "Extra Normals", isShowExtraNormal);
             if(isShowExtraNormal)
             {
                 EditorGUILayout.BeginVertical(boxOuter);
-                EditorGUILayout.LabelField("Extra Normals (Packed)", customToggleFont);
+                EditorGUILayout.LabelField("Extra Normals", customToggleFont);
                 EditorGUILayout.BeginVertical(boxInnerHalf);
 
                 if(customExtraNormalEnabled != null)
@@ -335,24 +341,27 @@ namespace dennokoworks
                     EditorGUI.BeginDisabledGroup(!exEnabled);
                 }
 
-                if(customExtraNormalTex != null)
-                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("Packed Normals (RG=1st / BA=2nd)"), customExtraNormalTex);
-
-                EditorGUILayout.LabelField("Normal 1st (RG)", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField("Normal 1st", EditorStyles.boldLabel);
+                if(customExtraNormal1stTex != null)
+                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("Normal Map 1st"), customExtraNormal1stTex);
                 if(customExtraNormalStrengthA != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthA, "Strength");
                 DrawTilingField(customExtraNormal1stScale, "Tiling");
+                DrawMaskChannelPopup(customExtraNormal1stMaskChannel);
 
-                EditorGUILayout.LabelField("Normal 2nd (BA)", EditorStyles.boldLabel);
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Normal 2nd", EditorStyles.boldLabel);
+                if(customExtraNormal2ndTex != null)
+                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("Normal Map 2nd"), customExtraNormal2ndTex);
                 if(customExtraNormalStrengthB != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthB, "Strength");
                 DrawTilingField(customExtraNormal2ndScale, "Tiling");
+                DrawMaskChannelPopup(customExtraNormal2ndMaskChannel);
 
                 if(customExtraNormalEnabled != null) EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.HelpBox(
-                    "1枚のRGBAに2枚分のノーマルをパックします (RG=1枚目のXY / BA=2枚目のXY)。" +
-                    "1st/2ndはそれぞれのTilingで別々にサンプルされます。" +
-                    "テクスチャのインポート設定は「Normal map」ではなく「Default」かつ sRGB(Color Texture) をオフ(Linear)にしてください。" +
-                    "Normal mapインポートはチャンネルをスウィズルするためパッキングが壊れます。" +
+                    "個別の接線空間ノーマルマップを2枚合成します。1st/2ndはそれぞれのTilingで別々にサンプルされます。" +
+                    "各StrengthはMask Channel(最上部のShared FX Mask 2枚xRGBA=8ch)の値で範囲制御されます(マスク白=全開)。" +
+                    "テクスチャのインポート設定は「Normal map」にしてください(lilToon本体のノーマルマップと同じ扱い)。" +
                     "また本機能はlilToon本体のノーマルマップ機能が有効なときに合成されます。",
                     MessageType.Info);
 
