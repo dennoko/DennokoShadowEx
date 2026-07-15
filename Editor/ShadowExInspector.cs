@@ -24,7 +24,8 @@ namespace dennokoworks
         MaterialProperty customExtraNormalTex;
         MaterialProperty customExtraNormalStrengthA;
         MaterialProperty customExtraNormalStrengthB;
-        MaterialProperty customExtraNormalBlend;
+        MaterialProperty customExtraNormal1stScale;
+        MaterialProperty customExtraNormal2ndScale;
 
         private static bool isShowCustomProperties;
         private static bool isShowExtraNormal;
@@ -53,7 +54,8 @@ namespace dennokoworks
             customExtraNormalTex       = FindProperty("_CustomExtraNormalTex",       props, false);
             customExtraNormalStrengthA = FindProperty("_CustomExtraNormalStrengthA", props, false);
             customExtraNormalStrengthB = FindProperty("_CustomExtraNormalStrengthB", props, false);
-            customExtraNormalBlend     = FindProperty("_CustomExtraNormalBlend",     props, false);
+            customExtraNormal1stScale  = FindProperty("_CustomExtraNormal1stScale",  props, false);
+            customExtraNormal2ndScale  = FindProperty("_CustomExtraNormal2ndScale",  props, false);
         }
 
         protected override void DrawCustomProperties(Material material)
@@ -118,22 +120,40 @@ namespace dennokoworks
                     EditorGUI.BeginDisabledGroup(!exEnabled);
                 }
 
-                if(customExtraNormalTex       != null) m_MaterialEditor.ShaderProperty(customExtraNormalTex,       "Packed Normals (RG=1st / BA=2nd)");
-                if(customExtraNormalStrengthA != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthA, "Strength A (RG)");
-                if(customExtraNormalStrengthB != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthB, "Strength B (BA)");
-                if(customExtraNormalBlend     != null) m_MaterialEditor.ShaderProperty(customExtraNormalBlend,     "Blend");
+                if(customExtraNormalTex != null)
+                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("Packed Normals (RG=1st / BA=2nd)"), customExtraNormalTex);
+
+                EditorGUILayout.LabelField("Normal 1st (RG)", EditorStyles.boldLabel);
+                if(customExtraNormalStrengthA != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthA, "Strength");
+                DrawTilingField(customExtraNormal1stScale, "Tiling");
+
+                EditorGUILayout.LabelField("Normal 2nd (BA)", EditorStyles.boldLabel);
+                if(customExtraNormalStrengthB != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthB, "Strength");
+                DrawTilingField(customExtraNormal2ndScale, "Tiling");
 
                 if(customExtraNormalEnabled != null) EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.HelpBox(
                     "1枚のRGBAに2枚分のノーマルをパックします (RG=1枚目のXY / BA=2枚目のXY)。" +
+                    "1st/2ndはそれぞれのTilingで別々にサンプルされます。" +
                     "テクスチャのインポート設定は「Normal map」ではなく「Default」かつ sRGB(Color Texture) をオフ(Linear)にしてください。" +
-                    "Normal mapインポートはチャンネルをスウィズルするためパッキングが壊れます。",
+                    "Normal mapインポートはチャンネルをスウィズルするためパッキングが壊れます。" +
+                    "また本機能はlilToon本体のノーマルマップ機能が有効なときに合成されます。",
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();
                 EditorGUILayout.EndVertical();
             }
+        }
+
+        // Tiling(スケール)のみを2要素で編集する。オフセットは扱わない (zwは0固定)。
+        private void DrawTilingField(MaterialProperty prop, string label)
+        {
+            if(prop == null) return;
+            EditorGUI.BeginChangeCheck();
+            Vector4 v = prop.vectorValue;
+            Vector2 tiling = EditorGUILayout.Vector2Field(label, new Vector2(v.x, v.y));
+            if(EditorGUI.EndChangeCheck()) prop.vectorValue = new Vector4(tiling.x, tiling.y, 0f, 0f);
         }
 
         protected override void ReplaceToCustomShaders()

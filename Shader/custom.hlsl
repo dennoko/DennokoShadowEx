@@ -26,7 +26,8 @@
     float  _CustomExtraNormalEnabled; \
     float  _CustomExtraNormalStrengthA; \
     float  _CustomExtraNormalStrengthB; \
-    float  _CustomExtraNormalBlend;
+    float4 _CustomExtraNormal1stScale; \
+    float4 _CustomExtraNormal2ndScale;
 
 // Custom textures
 // (_CameraDepthTexture は lilToon 側 (lil_common_input.hlsl) で宣言済みのため追加宣言しない)
@@ -39,23 +40,25 @@
 // SSAOの中心点計算にワールド座標を使うため強制的に v2f へ含める
 #define LIL_V2F_FORCE_POSITION_WS
 
-// 追加ノーマルの接線空間→ワールド変換 (fd.TBN) に必要なため、
-// 法線・タンジェント・バイタンジェントを v2f へ強制的に含める。
-#define LIL_V2F_FORCE_NORMAL
-#define LIL_V2F_FORCE_TANGENT
-#define LIL_V2F_FORCE_BITANGENT
-
-// 追加ノーマルマップ (2枚パック) を fd.N にブレンドする。
-// メインカラー処理前に法線を更新することで、以降のライティング/リムに反映させる。
-// exWS - fd.TBN[2] は「平面法線からの差分 (deviation)」であり、これを既存法線に
-// 加算することで normal1st/2nd の凹凸を保持したままディテールを重ねられる。
-#define BEFORE_MAIN \
+// 追加ノーマルマップ (1枚のRGBAに2枚分パック) を lilToon のノーマル処理内で合成する。
+// lilToon は BEFORE_NORMAL_2ND の直後に normalmap を fd.N へ変換 (world) し、
+// fd.ln / fd.uvMat / fd.reflectionN / fd.matcapN 等の派生値もまとめて再計算する。
+// そのため接線空間の normalmap にディテールを積むことで、追加処理を書かずとも
+// ライティング・MatCap・リム・反射すべてに反映される。
+// 1st(RG)と2nd(BA)は別UV(タイリング)でサンプルするため同一テクスチャを2回サンプルする
+// (テクスチャ「枚数」は1枚のまま。サンプラーも共有サンプラーを再利用)。
+// ※ この注入は lilToon のノーマルマップ機能が有効なとき (LIL_FEATURE_NORMAL) に動作する。
+#define BEFORE_NORMAL_2ND \
     if (_CustomExtraNormalEnabled > 0.5) \
     { \
-        float4 exPacked = LIL_SAMPLE_2D(_CustomExtraNormalTex, sampler_linear_repeat, fd.uvMain); \
-        float3 exTN = lilShadowExCombinePackedNormals(exPacked, _CustomExtraNormalStrengthA, _CustomExtraNormalStrengthB); \
-        float3 exWS = mul(exTN, fd.TBN); \
-        fd.N = normalize(fd.N + (exWS - fd.TBN[2]) * _CustomExtraNormalBlend); \
+        float2 exUV1 = fd.uv0 * _CustomExtraNormal1stScale.xy; \
+        float2 exUV2 = fd.uv0 * _CustomExtraNormal2ndScale.xy; \
+        float2 exChA = LIL_SAMPLE_2D(_CustomExtraNormalTex, sampler_linear_repeat, exUV1).rg; \
+        float2 exChB = LIL_SAMPLE_2D(_CustomExtraNormalTex, sampler_linear_repeat, exUV2).ba; \
+        float3 exNA = lilShadowExDecodeNormalCh(exChA, _CustomExtraNormalStrengthA); \
+        float3 exNB = lilShadowExDecodeNormalCh(exChB, _CustomExtraNormalStrengthB); \
+        normalmap = lilShadowExBlendNormalUDN(normalmap, exNA); \
+        normalmap = lilShadowExBlendNormalUDN(normalmap, exNB); \
     }
 
 // Inserting a process into pixel shader

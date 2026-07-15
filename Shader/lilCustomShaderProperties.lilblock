@@ -16,6 +16,7 @@
         // ShadowEx Extra Normal Maps (2 packed in 1 RGBA : RG=1st / BA=2nd, Linear)
         _CustomExtraNormalEnabled ("Enable Extra Normals", Float) = 0
         _CustomExtraNormalTex ("Packed Normals (RG=1st / BA=2nd, Linear)", 2D) = "grey" {}
-        _CustomExtraNormalStrengthA ("Strength A (RG)", Range(0,10)) = 1
-        _CustomExtraNormalStrengthB ("Strength B (BA)", Range(0,10)) = 1
-        _CustomExtraNormalBlend ("Blend", Range(0,1)) = 1
+        _CustomExtraNormalStrengthA ("Strength 1st (RG)", Range(0,10)) = 1
+        _CustomExtraNormalStrengthB ("Strength 2nd (BA)", Range(0,10)) = 1
+        _CustomExtraNormal1stScale ("1st Tiling", Vector) = (1,1,0,0)
+        _CustomExtraNormal2ndScale ("2nd Tiling", Vector) = (1,1,0,0)

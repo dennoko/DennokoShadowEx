@@ -103,12 +103,11 @@ float3 lilShadowExDecodeNormalCh(float2 ch, float strength)
     return float3(xy, z);
 }
 
-// パックRGBAから2枚をUDN合成し、単一の接線空間法線を返す。
-float3 lilShadowExCombinePackedNormals(float4 packed, float strengthA, float strengthB)
+// UDNブレンド: ベース法線 (lilToonの1st等) の Z を保ちつつ、ディテール法線の XY を積む。
+// 加算のみで正規化1回と軽量。強い凹凸でも破綻しにくい。
+float3 lilShadowExBlendNormalUDN(float3 baseN, float3 detailN)
 {
-    float3 nA = lilShadowExDecodeNormalCh(packed.rg, strengthA);
-    float3 nB = lilShadowExDecodeNormalCh(packed.ba, strengthB);
-    return normalize(float3(nA.xy + nB.xy, nA.z * nB.z));
+    return normalize(float3(baseN.xy + detailN.xy, baseN.z));
 }
 
 // アングルベースAO本体。遮蔽度 (0..1) を返す。
