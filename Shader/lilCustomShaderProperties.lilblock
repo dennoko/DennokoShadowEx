@@ -30,5 +30,6 @@
         _CustomRim2ndBorder ("Fresnel Border", Range(0,1)) = 0.5
         _CustomRim2ndBlur ("Fresnel Blur", Range(0,1)) = 0.1
         _CustomRim2ndEnableLighting ("Enable Lighting", Range(0,1)) = 0
+        _CustomRim2ndShadowMask ("Shadow Mask", Range(0,1)) = 0
         _CustomRim2ndDepthWidth ("Depth Width (px)", Range(1,10)) = 2
         _CustomRim2ndDepthThreshold ("Depth Threshold", Range(0.001,2)) = 0.1

@@ -35,6 +35,7 @@ namespace dennokoworks
         MaterialProperty customRim2ndBorder;
         MaterialProperty customRim2ndBlur;
         MaterialProperty customRim2ndEnableLighting;
+        MaterialProperty customRim2ndShadowMask;
         MaterialProperty customRim2ndDepthWidth;
         MaterialProperty customRim2ndDepthThreshold;
 
@@ -76,6 +77,7 @@ namespace dennokoworks
             customRim2ndBorder         = FindProperty("_CustomRim2ndBorder",         props, false);
             customRim2ndBlur           = FindProperty("_CustomRim2ndBlur",           props, false);
             customRim2ndEnableLighting = FindProperty("_CustomRim2ndEnableLighting", props, false);
+            customRim2ndShadowMask     = FindProperty("_CustomRim2ndShadowMask",     props, false);
             customRim2ndDepthWidth     = FindProperty("_CustomRim2ndDepthWidth",     props, false);
             customRim2ndDepthThreshold = FindProperty("_CustomRim2ndDepthThreshold", props, false);
         }
@@ -195,6 +197,7 @@ namespace dennokoworks
 
                 if(customRim2ndColor          != null) m_MaterialEditor.ShaderProperty(customRim2ndColor,          "Rim Color (HDR)");
                 if(customRim2ndEnableLighting != null) m_MaterialEditor.ShaderProperty(customRim2ndEnableLighting, "Enable Lighting");
+                if(customRim2ndShadowMask     != null) m_MaterialEditor.ShaderProperty(customRim2ndShadowMask,     "Shadow Mask");
 
                 if(mode == 0)
                 {

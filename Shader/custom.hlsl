@@ -35,6 +35,7 @@
     float  _CustomRim2ndBorder; \
     float  _CustomRim2ndBlur; \
     float  _CustomRim2ndEnableLighting; \
+    float  _CustomRim2ndShadowMask; \
     float  _CustomRim2ndDepthWidth; \
     float  _CustomRim2ndDepthThreshold;
 
@@ -93,6 +94,7 @@
             float centerEyeDepth = -mul(LIL_MATRIX_V, float4(fd.positionWS, 1.0)).z; \
             rim2 = lilShadowExDepthContour(fd.positionCS.xy, centerEyeDepth, _CustomRim2ndDepthWidth, _CustomRim2ndDepthThreshold); \
         } \
+        rim2 = lerp(rim2, rim2 * fd.shadowmix, _CustomRim2ndShadowMask); \
         float3 rim2Col = lerp(_CustomRim2ndColor.rgb, _CustomRim2ndColor.rgb * fd.lightColor, _CustomRim2ndEnableLighting); \
         fd.col.rgb += rim2Col * (rim2 * _CustomRim2ndColor.a); \
     }
