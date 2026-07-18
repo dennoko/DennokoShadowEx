@@ -38,6 +38,7 @@ namespace dennokoworks
         MaterialProperty customRim2ndBorder;
         MaterialProperty customRim2ndBlur;
         MaterialProperty customRim2ndEnableLighting;
+        MaterialProperty customRim2ndMainStrength;
         MaterialProperty customRim2ndShadowMask;
         MaterialProperty customRim2ndDepthWidth;
         MaterialProperty customRim2ndDepthThreshold;
@@ -87,18 +88,74 @@ namespace dennokoworks
         private static readonly string[] maskChannelNames =
             { "Mask1 R", "Mask1 G", "Mask1 B", "Mask1 A", "Mask2 R", "Mask2 G", "Mask2 B", "Mask2 A" };
 
-        private static bool isShowFXMask;
-        private static bool isShowCustomProperties;
-        private static bool isShowContactShadow;
-        private static bool isShowExtraNormal;
-        private static bool isShowRim2nd;
-        private static bool isShowRimShade;
-        private static bool isShowSpec;
-        private static bool isShowMatCapLayers;
+        private static bool isShowFXMask
+        {
+            get => EditorPrefs.GetBool("ShadowExInspector_isShowFXMask", false);
+            set => EditorPrefs.SetBool("ShadowExInspector_isShowFXMask", value);
+        }
+        private static bool isShowCustomProperties
+        {
+            get => EditorPrefs.GetBool("ShadowExInspector_isShowCustomProperties", false);
+            set => EditorPrefs.SetBool("ShadowExInspector_isShowCustomProperties", value);
+        }
+        private static bool isShowContactShadow
+        {
+            get => EditorPrefs.GetBool("ShadowExInspector_isShowContactShadow", false);
+            set => EditorPrefs.SetBool("ShadowExInspector_isShowContactShadow", value);
+        }
+        private static bool isShowExtraNormal
+        {
+            get => EditorPrefs.GetBool("ShadowExInspector_isShowExtraNormal", false);
+            set => EditorPrefs.SetBool("ShadowExInspector_isShowExtraNormal", value);
+        }
+        private static bool isShowRim2nd
+        {
+            get => EditorPrefs.GetBool("ShadowExInspector_isShowRim2nd", false);
+            set => EditorPrefs.SetBool("ShadowExInspector_isShowRim2nd", value);
+        }
+        private static bool isShowRimShade
+        {
+            get => EditorPrefs.GetBool("ShadowExInspector_isShowRimShade", false);
+            set => EditorPrefs.SetBool("ShadowExInspector_isShowRimShade", value);
+        }
+        private static bool isShowSpec
+        {
+            get => EditorPrefs.GetBool("ShadowExInspector_isShowSpec", false);
+            set => EditorPrefs.SetBool("ShadowExInspector_isShowSpec", value);
+        }
+        private static bool isShowMatCapLayers
+        {
+            get => EditorPrefs.GetBool("ShadowExInspector_isShowMatCapLayers", false);
+            set => EditorPrefs.SetBool("ShadowExInspector_isShowMatCapLayers", value);
+        }
         private const string shaderName = "dennokoworks/ShadowEx";
 
         // レンダーモード一覧を一時的にコア3種へ絞る際、元の一覧を退避しておく。
         private static string[] savedRenderingModeList;
+
+        public enum CustomPropertyBlock
+        {
+            SharedFXMask,
+            SSAO,
+            ContactShadow,
+            ExtraNormals,
+            RimLight2nd,
+            RimShade,
+            AdditionalSpecular,
+            MatCapLayers,
+            MatCapLayer1,
+            MatCapLayer2,
+            MatCapLayer3
+        }
+
+        private static readonly System.Collections.Generic.Dictionary<string, MaterialProperty> copiedProperties = new System.Collections.Generic.Dictionary<string, MaterialProperty>();
+        private static readonly System.Collections.Generic.Dictionary<string, Vector4> copiedVectorProperties = new System.Collections.Generic.Dictionary<string, Vector4>();
+
+        private struct CustomPropertyBlockData
+        {
+            public CustomPropertyBlock propertyBlock;
+            public bool shouldCopyTex;
+        }
 
         protected override void LoadCustomProperties(MaterialProperty[] props, Material material)
         {
@@ -162,6 +219,7 @@ namespace dennokoworks
             customRim2ndBorder         = FindProperty("_CustomRim2ndBorder",         props, false);
             customRim2ndBlur           = FindProperty("_CustomRim2ndBlur",           props, false);
             customRim2ndEnableLighting = FindProperty("_CustomRim2ndEnableLighting", props, false);
+            customRim2ndMainStrength   = FindProperty("_CustomRim2ndMainStrength",   props, false);
             customRim2ndShadowMask     = FindProperty("_CustomRim2ndShadowMask",     props, false);
             customRim2ndDepthWidth     = FindProperty("_CustomRim2ndDepthWidth",     props, false);
             customRim2ndDepthThreshold = FindProperty("_CustomRim2ndDepthThreshold", props, false);
@@ -207,6 +265,7 @@ namespace dennokoworks
             }
 
             isShowFXMask = Foldout("Shared FX Mask", "Shared FX Mask", isShowFXMask);
+            DrawMenuButton(CustomPropertyBlock.SharedFXMask);
             if(isShowFXMask)
             {
                 EditorGUILayout.BeginVertical(boxOuter);
@@ -234,6 +293,7 @@ namespace dennokoworks
             }
 
             isShowCustomProperties = Foldout("SSAO (Angle Based)", "SSAO (Angle Based)", isShowCustomProperties);
+            DrawMenuButton(CustomPropertyBlock.SSAO);
             if(isShowCustomProperties)
             {
                 EditorGUILayout.BeginVertical(boxOuter);
@@ -278,6 +338,7 @@ namespace dennokoworks
             }
 
             isShowContactShadow = Foldout("Contact Shadow", "Contact Shadow", isShowContactShadow);
+            DrawMenuButton(CustomPropertyBlock.ContactShadow);
             if(isShowContactShadow)
             {
                 EditorGUILayout.BeginVertical(boxOuter);
@@ -326,6 +387,7 @@ namespace dennokoworks
             }
 
             isShowExtraNormal = Foldout("Extra Normals", "Extra Normals", isShowExtraNormal);
+            DrawMenuButton(CustomPropertyBlock.ExtraNormals);
             if(isShowExtraNormal)
             {
                 EditorGUILayout.BeginVertical(boxOuter);
@@ -370,6 +432,7 @@ namespace dennokoworks
             }
 
             isShowRim2nd = Foldout("Rim Light 2nd", "Rim Light 2nd", isShowRim2nd);
+            DrawMenuButton(CustomPropertyBlock.RimLight2nd);
             if(isShowRim2nd)
             {
                 EditorGUILayout.BeginVertical(boxOuter);
@@ -396,6 +459,7 @@ namespace dennokoworks
                 }
 
                 if(customRim2ndColor          != null) m_MaterialEditor.ShaderProperty(customRim2ndColor,          "Rim Color (HDR)");
+                if(customRim2ndMainStrength   != null) m_MaterialEditor.ShaderProperty(customRim2ndMainStrength,   "Main Color Strength");
                 if(customRim2ndEnableLighting != null) m_MaterialEditor.ShaderProperty(customRim2ndEnableLighting, "Enable Lighting");
                 if(customRim2ndShadowMask     != null) m_MaterialEditor.ShaderProperty(customRim2ndShadowMask,     "Shadow Mask");
 
@@ -428,6 +492,7 @@ namespace dennokoworks
             }
 
             isShowRimShade = Foldout("Rim Shade", "Rim Shade", isShowRimShade);
+            DrawMenuButton(CustomPropertyBlock.RimShade);
             if(isShowRimShade)
             {
                 EditorGUILayout.BeginVertical(boxOuter);
@@ -466,6 +531,7 @@ namespace dennokoworks
             }
 
             isShowSpec = Foldout("Additional Specular", "Additional Specular", isShowSpec);
+            DrawMenuButton(CustomPropertyBlock.AdditionalSpecular);
             if(isShowSpec)
             {
                 EditorGUILayout.BeginVertical(boxOuter);
@@ -512,6 +578,7 @@ namespace dennokoworks
             }
 
             isShowMatCapLayers = Foldout("MatCap Layers", "MatCap Layers", isShowMatCapLayers);
+            DrawMenuButton(CustomPropertyBlock.MatCapLayers);
             if(isShowMatCapLayers)
             {
                 EditorGUILayout.BeginVertical(boxOuter);
@@ -522,6 +589,7 @@ namespace dennokoworks
                 {
                     if(i > 0) EditorGUILayout.Space();
                     EditorGUILayout.LabelField("Layer " + (i + 1), EditorStyles.boldLabel);
+                    DrawMenuButton(i == 0 ? CustomPropertyBlock.MatCapLayer1 : (i == 1 ? CustomPropertyBlock.MatCapLayer2 : CustomPropertyBlock.MatCapLayer3));
 
                     if(customMatCapLayerEnabled[i] != null)
                     {
@@ -587,6 +655,227 @@ namespace dennokoworks
             Vector4 v = prop.vectorValue;
             Vector2 tiling = EditorGUILayout.Vector2Field(label, new Vector2(v.x, v.y));
             if(EditorGUI.EndChangeCheck()) prop.vectorValue = new Vector4(tiling.x, tiling.y, 0f, 0f);
+        }
+
+        private System.Collections.Generic.List<MaterialProperty> GetPropertiesForBlock(CustomPropertyBlock propertyBlock)
+        {
+            var list = new System.Collections.Generic.List<MaterialProperty>();
+            switch(propertyBlock)
+            {
+                case CustomPropertyBlock.SharedFXMask:
+                    if(customFXMask != null) list.Add(customFXMask);
+                    if(customFXMask2 != null) list.Add(customFXMask2);
+                    break;
+                case CustomPropertyBlock.SSAO:
+                    if(customSSAOEnabled != null) list.Add(customSSAOEnabled);
+                    if(customSSAOColor != null) list.Add(customSSAOColor);
+                    if(customSSAOStrength != null) list.Add(customSSAOStrength);
+                    if(customSSAOPower != null) list.Add(customSSAOPower);
+                    if(customSSAOSampleLength != null) list.Add(customSSAOSampleLength);
+                    if(customSSAOMinDistance != null) list.Add(customSSAOMinDistance);
+                    if(customSSAOMaxDistance != null) list.Add(customSSAOMaxDistance);
+                    if(customSSAOBias != null) list.Add(customSSAOBias);
+                    if(customSSAOQuality != null) list.Add(customSSAOQuality);
+                    if(customSSAODither != null) list.Add(customSSAODither);
+                    break;
+                case CustomPropertyBlock.ContactShadow:
+                    if(customContactShadowEnabled != null) list.Add(customContactShadowEnabled);
+                    if(customContactShadowColor != null) list.Add(customContactShadowColor);
+                    if(customContactShadowLength != null) list.Add(customContactShadowLength);
+                    if(customContactShadowThickness != null) list.Add(customContactShadowThickness);
+                    if(customContactShadowBias != null) list.Add(customContactShadowBias);
+                    if(customContactShadowBlur != null) list.Add(customContactShadowBlur);
+                    if(customContactShadowBlurStrength != null) list.Add(customContactShadowBlurStrength);
+                    if(customContactShadowQuality != null) list.Add(customContactShadowQuality);
+                    if(customContactShadowDither != null) list.Add(customContactShadowDither);
+                    if(customContactShadowMaskChannel != null) list.Add(customContactShadowMaskChannel);
+                    break;
+                case CustomPropertyBlock.ExtraNormals:
+                    if(customExtraNormalEnabled != null) list.Add(customExtraNormalEnabled);
+                    if(customExtraNormal1stTex != null) list.Add(customExtraNormal1stTex);
+                    if(customExtraNormalStrengthA != null) list.Add(customExtraNormalStrengthA);
+                    if(customExtraNormal1stScale != null) list.Add(customExtraNormal1stScale);
+                    if(customExtraNormal1stMaskChannel != null) list.Add(customExtraNormal1stMaskChannel);
+                    if(customExtraNormal2ndTex != null) list.Add(customExtraNormal2ndTex);
+                    if(customExtraNormalStrengthB != null) list.Add(customExtraNormalStrengthB);
+                    if(customExtraNormal2ndScale != null) list.Add(customExtraNormal2ndScale);
+                    if(customExtraNormal2ndMaskChannel != null) list.Add(customExtraNormal2ndMaskChannel);
+                    break;
+                case CustomPropertyBlock.RimLight2nd:
+                    if(customRim2ndEnabled != null) list.Add(customRim2ndEnabled);
+                    if(customRim2ndMode != null) list.Add(customRim2ndMode);
+                    if(customRim2ndColor != null) list.Add(customRim2ndColor);
+                    if(customRim2ndPower != null) list.Add(customRim2ndPower);
+                    if(customRim2ndBorder != null) list.Add(customRim2ndBorder);
+                    if(customRim2ndBlur != null) list.Add(customRim2ndBlur);
+                    if(customRim2ndEnableLighting != null) list.Add(customRim2ndEnableLighting);
+                    if(customRim2ndMainStrength != null) list.Add(customRim2ndMainStrength);
+                    if(customRim2ndShadowMask != null) list.Add(customRim2ndShadowMask);
+                    if(customRim2ndDepthWidth != null) list.Add(customRim2ndDepthWidth);
+                    if(customRim2ndDepthThreshold != null) list.Add(customRim2ndDepthThreshold);
+                    break;
+                case CustomPropertyBlock.RimShade:
+                    if(customRimShadeEnabled != null) list.Add(customRimShadeEnabled);
+                    if(customRimShadeColor != null) list.Add(customRimShadeColor);
+                    if(customRimShadeBorder != null) list.Add(customRimShadeBorder);
+                    if(customRimShadeBlur != null) list.Add(customRimShadeBlur);
+                    if(customRimShadeFresnelPower != null) list.Add(customRimShadeFresnelPower);
+                    if(customRimShadeMaskChannel != null) list.Add(customRimShadeMaskChannel);
+                    break;
+                case CustomPropertyBlock.AdditionalSpecular:
+                    if(customSpecEnabled != null) list.Add(customSpecEnabled);
+                    if(customSpecColor != null) list.Add(customSpecColor);
+                    if(customSpecSmoothness != null) list.Add(customSpecSmoothness);
+                    if(customSpecStrength != null) list.Add(customSpecStrength);
+                    if(customSpecBlendMode != null) list.Add(customSpecBlendMode);
+                    if(customSpecEnableLighting != null) list.Add(customSpecEnableLighting);
+                    if(customSpecShadowMask != null) list.Add(customSpecShadowMask);
+                    if(customSpecMaskChannel != null) list.Add(customSpecMaskChannel);
+                    break;
+                case CustomPropertyBlock.MatCapLayer1:
+                    AddMatCapLayerProperties(list, 0);
+                    break;
+                case CustomPropertyBlock.MatCapLayer2:
+                    AddMatCapLayerProperties(list, 1);
+                    break;
+                case CustomPropertyBlock.MatCapLayer3:
+                    AddMatCapLayerProperties(list, 2);
+                    break;
+                case CustomPropertyBlock.MatCapLayers:
+                    AddMatCapLayerProperties(list, 0);
+                    AddMatCapLayerProperties(list, 1);
+                    AddMatCapLayerProperties(list, 2);
+                    break;
+            }
+            return list;
+        }
+
+        private void AddMatCapLayerProperties(System.Collections.Generic.List<MaterialProperty> list, int index)
+        {
+            if(index < 0 || index >= 3) return;
+            if(customMatCapLayerEnabled[index] != null) list.Add(customMatCapLayerEnabled[index]);
+            if(customMatCapLayerTex[index] != null) list.Add(customMatCapLayerTex[index]);
+            if(customMatCapLayerColor[index] != null) list.Add(customMatCapLayerColor[index]);
+            if(customMatCapLayerBlendMode[index] != null) list.Add(customMatCapLayerBlendMode[index]);
+            if(customMatCapLayerEnableLighting[index] != null) list.Add(customMatCapLayerEnableLighting[index]);
+            if(customMatCapLayerShadowMask[index] != null) list.Add(customMatCapLayerShadowMask[index]);
+            if(customMatCapLayerMaskChannel[index] != null) list.Add(customMatCapLayerMaskChannel[index]);
+        }
+
+        private void CopyProperties(CustomPropertyBlock propertyBlock)
+        {
+            var material = (Material)m_MaterialEditor.target;
+            var props = GetPropertiesForBlock(propertyBlock);
+            foreach(var p in props)
+            {
+                copiedProperties[p.name] = p;
+                if(p.type == MaterialProperty.PropType.Texture)
+                {
+                    string stPropertyName = p.name + "_ST";
+                    if(material.HasProperty(stPropertyName))
+                    {
+                        copiedVectorProperties[stPropertyName] = material.GetVector(stPropertyName);
+                    }
+                }
+            }
+        }
+
+        private void PasteProperties(CustomPropertyBlock propertyBlock, bool shouldCopyTex)
+        {
+            var material = (Material)m_MaterialEditor.target;
+            var props = GetPropertiesForBlock(propertyBlock);
+            foreach(var p in props)
+            {
+                if(p.type == MaterialProperty.PropType.Texture && !shouldCopyTex) continue;
+                if(!copiedProperties.ContainsKey(p.name) || copiedProperties[p.name] == null) continue;
+
+                var copiedProp = copiedProperties[p.name];
+                var propType = p.type;
+                if(propType == MaterialProperty.PropType.Color)   p.colorValue = copiedProp.colorValue;
+                if(propType == MaterialProperty.PropType.Vector)  p.vectorValue = copiedProp.vectorValue;
+                if(propType == MaterialProperty.PropType.Float)   p.floatValue = copiedProp.floatValue;
+                if(propType == MaterialProperty.PropType.Range)   p.floatValue = copiedProp.floatValue;
+                if(propType == MaterialProperty.PropType.Texture) p.textureValue = copiedProp.textureValue;
+
+                if(p.type == MaterialProperty.PropType.Texture && shouldCopyTex)
+                {
+                    string stPropertyName = p.name + "_ST";
+                    if(copiedVectorProperties.ContainsKey(stPropertyName) && material.HasProperty(stPropertyName))
+                    {
+                        material.SetVector(stPropertyName, copiedVectorProperties[stPropertyName]);
+                    }
+                }
+            }
+        }
+
+        private void ResetProperties(CustomPropertyBlock propertyBlock)
+        {
+            #if UNITY_2019_3_OR_NEWER
+            var props = GetPropertiesForBlock(propertyBlock);
+            foreach(var p in props)
+            {
+                if(p.targets == null || p.targets.Length == 0) continue;
+                if(!(p.targets[0] is Material mat) || mat.shader == null) continue;
+
+                var shader = mat.shader;
+                int propID = shader.FindPropertyIndex(p.name);
+                if(propID == -1) continue;
+
+                var propType = p.type;
+                if(propType == MaterialProperty.PropType.Color)   p.colorValue = shader.GetPropertyDefaultVectorValue(propID);
+                if(propType == MaterialProperty.PropType.Vector)  p.vectorValue = shader.GetPropertyDefaultVectorValue(propID);
+                if(propType == MaterialProperty.PropType.Float)   p.floatValue = shader.GetPropertyDefaultFloatValue(propID);
+                if(propType == MaterialProperty.PropType.Range)   p.floatValue = shader.GetPropertyDefaultFloatValue(propID);
+                if(propType == MaterialProperty.PropType.Texture) p.textureValue = null;
+            }
+            #endif
+        }
+
+        private void CopyPropertiesMenu(object obj)
+        {
+            CopyProperties((CustomPropertyBlock)obj);
+        }
+
+        private void PastePropertiesMenu(object obj)
+        {
+            var data = (CustomPropertyBlockData)obj;
+            PasteProperties(data.propertyBlock, data.shouldCopyTex);
+        }
+
+        private void ResetPropertiesMenu(object obj)
+        {
+            ResetProperties((CustomPropertyBlock)obj);
+        }
+
+        private void OpenHelpPage(object helpAnchor)
+        {
+            if(helpAnchor != null)
+            {
+                Application.OpenURL(GetLoc("sManualURL") + helpAnchor.ToString());
+            }
+        }
+
+        private void DrawMenuButton(CustomPropertyBlock propertyBlock, string helpAnchor = null)
+        {
+            var position = GUILayoutUtility.GetLastRect();
+            position.x += position.width - 24;
+            position.width = 24;
+
+            if(GUI.Button(position, EditorGUIUtility.IconContent("_Popup"), middleButton))
+            {
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent(GetLoc("sCopy")),               false, CopyPropertiesMenu,  propertyBlock);
+                menu.AddItem(new GUIContent(GetLoc("sPaste")),              false, PastePropertiesMenu, new CustomPropertyBlockData{propertyBlock = propertyBlock, shouldCopyTex = false});
+                menu.AddItem(new GUIContent(GetLoc("sPasteWithTexture")),   false, PastePropertiesMenu, new CustomPropertyBlockData{propertyBlock = propertyBlock, shouldCopyTex = true});
+                #if UNITY_2019_3_OR_NEWER
+                    menu.AddItem(new GUIContent(GetLoc("sReset")),              false, ResetPropertiesMenu, propertyBlock);
+                #endif
+                if(!string.IsNullOrEmpty(helpAnchor))
+                {
+                    menu.AddItem(new GUIContent(GetLoc("sOpenManual")),         false, OpenHelpPage,        helpAnchor);
+                }
+                menu.ShowAsContext();
+            }
         }
 
         protected override void ReplaceToCustomShaders()

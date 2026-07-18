@@ -42,6 +42,7 @@
     float  _CustomRim2ndBorder; \
     float  _CustomRim2ndBlur; \
     float  _CustomRim2ndEnableLighting; \
+    float  _CustomRim2ndMainStrength; \
     float  _CustomRim2ndShadowMask; \
     float  _CustomRim2ndDepthWidth; \
     float  _CustomRim2ndDepthThreshold; \
@@ -143,6 +144,8 @@
 //   Mode 1 = 深度輪郭型 : _CameraDepthTexture を再利用しシルエット境界を検出。
 //            LIL_ENABLED_DEPTH_TEX が有効なワールドでのみ動作 (無効時は素通し)。
 // _CustomRim2ndEnableLighting でライト色乗算 (0=定数色 / 1=ライト追従) を補間。
+// _CustomRim2ndMainStrength でリム色へのメインカラー(fd.albedo)乗算を補間
+// (lilToon本体リムの _RimMainStrength と同じ方式)。
 //
 // 追加スペキュラ (質感系) も同じ注入点に相乗り。ベースパス限定なので追加ライトで
 // 二重加算されず、full/lite 両パスに存在するため Lite でも効く。
@@ -166,7 +169,8 @@
             rim2 = lilShadowExDepthContour(fd.positionCS.xy, centerEyeDepth, _CustomRim2ndDepthWidth, _CustomRim2ndDepthThreshold); \
         } \
         rim2 = lerp(rim2, rim2 * fd.shadowmix, _CustomRim2ndShadowMask); \
-        float3 rim2Col = lerp(_CustomRim2ndColor.rgb, _CustomRim2ndColor.rgb * fd.lightColor, _CustomRim2ndEnableLighting); \
+        float3 rim2Col = lerp(_CustomRim2ndColor.rgb, _CustomRim2ndColor.rgb * fd.albedo, _CustomRim2ndMainStrength); \
+        rim2Col = lerp(rim2Col, rim2Col * fd.lightColor, _CustomRim2ndEnableLighting); \
         fd.col.rgb += rim2Col * (rim2 * _CustomRim2ndColor.a); \
     } \
     if (_CustomSpecEnabled > 0.5) \
