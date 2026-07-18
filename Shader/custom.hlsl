@@ -241,7 +241,7 @@
     { \
         float aoRate = lilShadowExCalcSSAO(fd.positionWS, fd.positionCS); \
         float aoFactor = saturate(pow(saturate(aoRate), _CustomSSAOPower) * _CustomSSAOStrength); \
-        fd.col.rgb = lerp(fd.col.rgb, _CustomSSAOColor.rgb, aoFactor * _CustomSSAOColor.a); \
+        fd.col.rgb = lerp(fd.col.rgb, fd.col.rgb * _CustomSSAOColor.rgb, aoFactor * _CustomSSAOColor.a); \
     } \
     if (_CustomContactShadowEnabled > 0.5 && LIL_ENABLED_DEPTH_TEX) \
     { \
