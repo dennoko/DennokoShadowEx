@@ -15,6 +15,9 @@
 //     角度方向の隙間が埋まりバンディングが消える (インライン回転スーパーサンプリング)
 //   - Dither: Interleaved Gradient Noise でピクセルごとにパターンを回転。
 //     ノイズが高周波かつ均一に分散するため、目の空間積分で滑らかに見える
+//   - Blur: コンタクトシャドウ同様の解析的ソフト化 (単一パスのためポストブラー不可)。
+//     bias/minDist の二値判定を smoothstep 化して境界を連続化し、サンプル半径を
+//     ピクセルごとにジッターして半径方向のバンディングもノイズ化する。0で従来挙動と一致
 //----------------------------------------------------------------------------------------------------------------------
 
 // サンプリングパターン: 参照実装 (SSAOAngleBased.cs) と同様に
@@ -78,18 +81,24 @@ float lilShadowExSampleOcclusion(float3 offsetPos, float3 centerVS, float center
     float eyeDepth;
     if (!lilShadowExSampleEyeDepth(offsetPos, eyeDepth)) return 0.0;
 
-    // ほぼ同一深度 (同一平面) のサンプルはAOに寄与させない
-    if (abs(centerEyeDepth - eyeDepth) < _CustomSSAOBias) return 0.0;
+    // ほぼ同一深度 (同一平面) のサンプルはAOに寄与させない。
+    // Blur>0 では bias 境界を smoothstep で広げて寄与を連続化する (0 で従来の二値判定と一致)
+    float depthDiff = abs(centerEyeDepth - eyeDepth);
+    float biasWeight = smoothstep(_CustomSSAOBias, _CustomSSAOBias * (1.0 + _CustomSSAOBlur) + 1e-5, depthDiff);
+    if (biasWeight <= 0.0) return 0.0;
 
     float3 samplePos = lilShadowExReconstructVS(offsetPos, eyeDepth);
     float dist = distance(samplePos, centerVS);
-    if (dist < minDist || dist > _CustomSSAOMaxDistance) return 0.0;
+    if (dist > _CustomSSAOMaxDistance) return 0.0;
+    // Blur>0 では minDist 境界もソフト化する
+    float minWeight = smoothstep(minDist * saturate(1.0 - _CustomSSAOBlur), minDist + 1e-5, dist);
+    if (minWeight <= 0.0) return 0.0;
 
     // 中心→サンプル点の方向がカメラ方向へ傾くほど遮蔽されていると判定
     float d = dot((samplePos - centerVS) / dist, surfaceToCameraDir);
     // 遠いサンプルほど寄与を減衰させてソフトな見た目にする
     float falloff = 1.0 - saturate(dist / _CustomSSAOMaxDistance);
-    return max(0.0, d) * falloff;
+    return max(0.0, d) * falloff * biasWeight * minWeight;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -312,6 +321,10 @@ float lilShadowExCalcSSAO(float3 positionWS, float4 positionCS)
     // ピクセルごとにサンプリングパターンを回転してバンディングをノイズ化 (任意)
     float ditherRad = _CustomSSAODither > 0.5 ? lilShadowExIGN(positionCS.xy) * (2.0 * LIL_PI) : 0.0;
 
+    // Blur>0: サンプル半径もピクセルごとにジッターして半径方向のバンディングをノイズ化。
+    // 回転用IGNと相関しないよう座標をオフセットした2つ目のIGNを使う
+    float radiusScale = lerp(1.0, 0.7 + 0.6 * lilShadowExIGN(positionCS.xy + 17.0), _CustomSSAOBlur);
+
     float minDist = max(_CustomSSAOMinDistance, 0.0001);
     uint iterations = (uint)clamp(_CustomSSAOQuality + 0.5, 1.0, 4.0);
     // パターンは約60°周期なので、反復ごとに 60°/K ずつ回転させて角度の隙間を埋める
@@ -327,7 +340,7 @@ float lilShadowExCalcSSAO(float3 positionWS, float4 positionCS)
         {
             float rad = LIL_SHADOWEX_SSAO_ROTATIONS[i] + baseRad;
             // 反復ごとに距離の割り当てもローテーションし、半径方向の隙間も埋める
-            float offsetLen = LIL_SHADOWEX_SSAO_DISTANCES[(i + k) % 6] * _CustomSSAOSampleLength;
+            float offsetLen = LIL_SHADOWEX_SSAO_DISTANCES[(i + k) % 6] * _CustomSSAOSampleLength * radiusScale;
             float2 dir;
             sincos(rad, dir.y, dir.x);
 

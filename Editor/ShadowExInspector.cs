@@ -16,6 +16,7 @@ namespace dennokoworks
         MaterialProperty customSSAOMinDistance;
         MaterialProperty customSSAOMaxDistance;
         MaterialProperty customSSAOBias;
+        MaterialProperty customSSAOBlur;
         MaterialProperty customSSAODither;
         MaterialProperty customSSAOQuality;
 
@@ -188,6 +189,7 @@ namespace dennokoworks
             customSSAOMinDistance  = FindProperty("_CustomSSAOMinDistance",  props, false);
             customSSAOMaxDistance  = FindProperty("_CustomSSAOMaxDistance",  props, false);
             customSSAOBias         = FindProperty("_CustomSSAOBias",         props, false);
+            customSSAOBlur         = FindProperty("_CustomSSAOBlur",         props, false);
             customSSAODither       = FindProperty("_CustomSSAODither",       props, false);
             customSSAOQuality      = FindProperty("_CustomSSAOQuality",      props, false);
 
@@ -316,6 +318,7 @@ namespace dennokoworks
                 if(customSSAOMinDistance  != null) m_MaterialEditor.ShaderProperty(customSSAOMinDistance,  "Min Distance (m)");
                 if(customSSAOMaxDistance  != null) m_MaterialEditor.ShaderProperty(customSSAOMaxDistance,  "Max Distance (m)");
                 if(customSSAOBias         != null) m_MaterialEditor.ShaderProperty(customSSAOBias,         "Depth Bias (m)");
+                if(customSSAOBlur         != null) m_MaterialEditor.ShaderProperty(customSSAOBlur,         "Blur");
 
                 if(customSSAOQuality != null) m_MaterialEditor.ShaderProperty(customSSAOQuality, "Quality (x12 samples)");
 
@@ -330,7 +333,9 @@ namespace dennokoworks
 
                 EditorGUILayout.HelpBox(
                     "SSAOは_CameraDepthTextureが有効な環境でのみ描画されます。" +
-                    "VRChatではシャドウ付きDirectional Lightが存在するワールドで有効になります。",
+                    "VRChatではシャドウ付きDirectional Lightが存在するワールドで有効になります。\n" +
+                    "Blur: AOの境界とバンディングをソフト化します(追加コストなし)。" +
+                    "Powerを1未満にすると濃淡のグラデーションも柔らかくなります。",
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();
@@ -675,6 +680,7 @@ namespace dennokoworks
                     if(customSSAOMinDistance != null) list.Add(customSSAOMinDistance);
                     if(customSSAOMaxDistance != null) list.Add(customSSAOMaxDistance);
                     if(customSSAOBias != null) list.Add(customSSAOBias);
+                    if(customSSAOBlur != null) list.Add(customSSAOBlur);
                     if(customSSAOQuality != null) list.Add(customSSAOQuality);
                     if(customSSAODither != null) list.Add(customSSAODither);
                     break;

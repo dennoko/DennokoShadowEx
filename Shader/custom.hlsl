@@ -26,6 +26,7 @@
     float  _CustomSSAOMinDistance; \
     float  _CustomSSAOMaxDistance; \
     float  _CustomSSAOBias; \
+    float  _CustomSSAOBlur; \
     float  _CustomSSAODither; \
     float  _CustomSSAOQuality; \
     float  _CustomExtraNormalEnabled; \
