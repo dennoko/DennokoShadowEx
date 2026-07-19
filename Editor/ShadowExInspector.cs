@@ -281,15 +281,21 @@ namespace dennokoworks
                 if(customFXMask2 != null)
                     m_MaterialEditor.TexturePropertySingleLine(new GUIContent("FX Mask 2 (RGBA)"), customFXMask2);
 
-                if(GUILayout.Button("FX Mask Packer を開く"))
+                if(GUILayout.Button(ShadowExLanguage.Get("FX Mask Packer を開く", "Open FX Mask Packer")))
                     ShadowExMaskPacker.Open();
 
                 EditorGUILayout.HelpBox(
-                    "複数の質感FX(リムシェード / MatCapレイヤー / コンタクトシャドウ / 追加スペキュラ)で共有するRGBAパックマスクです。\n" +
-                    "各FXのMask Channelで2枚xRGBAの計8チャンネルから使用chを選びます。\n" +
-                    "有効なFXが実際に参照しているマスクだけがサンプルされます(FXの数によらずピクセルあたり最大2サンプル)。\n" +
-                    "マスク画像のパッキング(1~4枚をRGBAへ合成)はFX Mask Packerで行えます。" +
-                    "インポート設定はsRGB(Color Texture)をオフ(Linear)推奨です。",
+                    ShadowExLanguage.Get(
+                        "複数の質感FX(リムシェード / MatCapレイヤー / コンタクトシャドウ / 追加スペキュラ)で共有するRGBAパックマスクです。\n" +
+                        "各FXのMask Channelで2枚xRGBAの計8チャンネルから使用chを選びます。\n" +
+                        "有効なFXが実際に参照しているマスクだけがサンプルされます(FXの数によらずピクセルあたり最大2サンプル)。\n" +
+                        "マスク画像のパッキング(1~4枚をRGBAへ合成)はFX Mask Packerで行えます。" +
+                        "インポート設定はsRGB(Color Texture)をオフ(Linear)推奨です。",
+                        "Shared RGBA packed mask for multiple texture FX (Rim Shade / MatCap Layers / Contact Shadow / Additional Specular).\n" +
+                        "Select the channel to use from 8 channels (2 textures x RGBA) in each FX's Mask Channel.\n" +
+                        "Only masks actually referenced by active FX are sampled (max 2 samples per pixel regardless of FX count).\n" +
+                        "Packing mask images (1-4 images into RGBA) can be done with FX Mask Packer.\n" +
+                        "Import setting: sRGB (Color Texture) OFF (Linear) is recommended."),
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();
@@ -307,42 +313,48 @@ namespace dennokoworks
                 if(customSSAOEnabled != null)
                 {
                     EditorGUI.BeginChangeCheck();
-                    bool ssaoEnabled = EditorGUILayout.Toggle("Enable SSAO", customSSAOEnabled.floatValue > 0.5f);
+                    bool ssaoEnabled = EditorGUILayout.Toggle(ShadowExLanguage.Get("SSAOを有効化", "Enable SSAO"), customSSAOEnabled.floatValue > 0.5f);
                     if(EditorGUI.EndChangeCheck()) customSSAOEnabled.floatValue = ssaoEnabled ? 1f : 0f;
 
                     EditorGUI.BeginDisabledGroup(!ssaoEnabled);
                 }
 
-                if(customSSAOColor        != null) m_MaterialEditor.ShaderProperty(customSSAOColor,        "Occlusion Color");
-                if(customSSAOStrength     != null) m_MaterialEditor.ShaderProperty(customSSAOStrength,     "Strength");
-                if(customSSAOPower        != null) m_MaterialEditor.ShaderProperty(customSSAOPower,        "Power");
-                if(customSSAOSampleLength != null) m_MaterialEditor.ShaderProperty(customSSAOSampleLength, "Sample Length (m @1m)");
-                if(customSSAOMinDistance  != null) m_MaterialEditor.ShaderProperty(customSSAOMinDistance,  "Min Distance (m @1m)");
-                if(customSSAOMaxDistance  != null) m_MaterialEditor.ShaderProperty(customSSAOMaxDistance,  "Max Distance (m @1m)");
-                if(customSSAOBias         != null) m_MaterialEditor.ShaderProperty(customSSAOBias,         "Depth Bias (m @1m)");
-                if(customSSAOFadeDistance != null) m_MaterialEditor.ShaderProperty(customSSAOFadeDistance, "Fade Distance (m)");
-                if(customSSAOBlur         != null) m_MaterialEditor.ShaderProperty(customSSAOBlur,         "Blur");
+                if(customSSAOColor        != null) m_MaterialEditor.ShaderProperty(customSSAOColor,        ShadowExLanguage.Get("遮蔽色", "Occlusion Color"));
+                if(customSSAOStrength     != null) m_MaterialEditor.ShaderProperty(customSSAOStrength,     ShadowExLanguage.Get("強度", "Strength"));
+                if(customSSAOPower        != null) m_MaterialEditor.ShaderProperty(customSSAOPower,        ShadowExLanguage.Get("ぼかし強度 (Power)", "Power"));
+                if(customSSAOSampleLength != null) m_MaterialEditor.ShaderProperty(customSSAOSampleLength, ShadowExLanguage.Get("サンプル長 (m)", "Sample Length (m)"));
+                if(customSSAOMinDistance  != null) m_MaterialEditor.ShaderProperty(customSSAOMinDistance,  ShadowExLanguage.Get("最小距離 (m)", "Min Distance (m)"));
+                if(customSSAOMaxDistance  != null) m_MaterialEditor.ShaderProperty(customSSAOMaxDistance,  ShadowExLanguage.Get("最大距離 (m)", "Max Distance (m)"));
+                if(customSSAOBias         != null) m_MaterialEditor.ShaderProperty(customSSAOBias,         ShadowExLanguage.Get("深度バイアス (m)", "Depth Bias (m)"));
+                if(customSSAOFadeDistance != null) m_MaterialEditor.ShaderProperty(customSSAOFadeDistance, ShadowExLanguage.Get("フェード距離 (m)", "Fade Distance (m)"));
+                if(customSSAOBlur         != null) m_MaterialEditor.ShaderProperty(customSSAOBlur,         ShadowExLanguage.Get("ぼかし", "Blur"));
 
-                if(customSSAOQuality != null) m_MaterialEditor.ShaderProperty(customSSAOQuality, "Quality (x12 samples)");
+                if(customSSAOQuality != null) m_MaterialEditor.ShaderProperty(customSSAOQuality, ShadowExLanguage.Get("品質 (12サンプル)", "Quality (x12 samples)"));
 
                 if(customSSAODither != null)
                 {
                     EditorGUI.BeginChangeCheck();
-                    bool dither = EditorGUILayout.Toggle("Dither (IGN)", customSSAODither.floatValue > 0.5f);
+                    bool dither = EditorGUILayout.Toggle(ShadowExLanguage.Get("ディザリング (IGN)", "Dither (IGN)"), customSSAODither.floatValue > 0.5f);
                     if(EditorGUI.EndChangeCheck()) customSSAODither.floatValue = dither ? 1f : 0f;
                 }
 
                 if(customSSAOEnabled != null) EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.HelpBox(
-                    "SSAOは_CameraDepthTextureが有効な環境でのみ描画されます。" +
-                    "VRChatではシャドウ付きDirectional Lightが存在するワールドで有効になります。\n" +
-                    "距離系パラメータは「FoV60°・距離1mで見たとき」の値で、FoVやカメラズーム、距離に" +
-                    "依らず画面上の見え方が一定になるよう自動スケールされます。\n" +
-                    "Fade Distance: 見かけ距離がこの値に近づくとAOをフェードアウトします" +
-                    "(ズーム撮影で大写しになっている場合はフェードしません)。\n" +
-                    "Blur: AOの境界とバンディングをソフト化します(追加コストなし)。" +
-                    "Powerを1未満にすると濃淡のグラデーションも柔らかくなります。",
+                    ShadowExLanguage.Get(
+                        "SSAOは_CameraDepthTextureが有効な環境でのみ描画されます。" +
+                        "VRChatではシャドウ付きDirectional Lightが存在するワールドで有効になります。\n" +
+                        "距離系パラメータは「FoV60°・距離1mで見たとき」の値で、FoVやカメラズーム、距離に" +
+                        "依らず画面上の見え方が一定になるよう自動スケールされます。\n" +
+                        "Fade Distance: 見かけ距離がこの値に近づくとAOをフェードアウトします" +
+                        "(ズーム撮影で大写しになっている場合はフェードしません)。\n" +
+                        "Blur: AOの境界とバンディングをソフト化します(追加コストなし)。" +
+                        "Powerを1未満にすると濃淡のグラデーションも柔らかくなります。",
+                        "SSAO rendered only when _CameraDepthTexture is enabled.\n" +
+                        "In VRChat, enabled in worlds with shadowed Directional Light.\n" +
+                        "Distance parameters are scaled for FoV 60° at 1m distance, automatically adjusted for zoom and distance.\n" +
+                        "Fade Distance: Fades out AO as apparent distance approaches this value (no fade when zoomed in on large view).\n" +
+                        "Blur: Softens AO edges and banding at no extra cost. Power < 1 softens gradation."),
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();
@@ -360,24 +372,24 @@ namespace dennokoworks
                 if(customContactShadowEnabled != null)
                 {
                     EditorGUI.BeginChangeCheck();
-                    bool csEnabled = EditorGUILayout.Toggle("Enable Contact Shadow", customContactShadowEnabled.floatValue > 0.5f);
+                    bool csEnabled = EditorGUILayout.Toggle(ShadowExLanguage.Get("コンタクトシャドウを有効化", "Enable Contact Shadow"), customContactShadowEnabled.floatValue > 0.5f);
                     if(EditorGUI.EndChangeCheck()) customContactShadowEnabled.floatValue = csEnabled ? 1f : 0f;
 
                     EditorGUI.BeginDisabledGroup(!csEnabled);
                 }
 
-                if(customContactShadowColor     != null) m_MaterialEditor.ShaderProperty(customContactShadowColor,     "Shadow Color (Multiply)");
-                if(customContactShadowLength    != null) m_MaterialEditor.ShaderProperty(customContactShadowLength,    "Ray Length (m)");
-                if(customContactShadowThickness != null) m_MaterialEditor.ShaderProperty(customContactShadowThickness, "Thickness (m)");
-                if(customContactShadowBias      != null) m_MaterialEditor.ShaderProperty(customContactShadowBias,      "Depth Bias (m)");
-                if(customContactShadowBlur      != null) m_MaterialEditor.ShaderProperty(customContactShadowBlur,      "Blur");
-                if(customContactShadowBlurStrength != null) m_MaterialEditor.ShaderProperty(customContactShadowBlurStrength, "Blur Strength");
-                if(customContactShadowQuality   != null) m_MaterialEditor.ShaderProperty(customContactShadowQuality,   "Quality (x8 steps)");
+                if(customContactShadowColor     != null) m_MaterialEditor.ShaderProperty(customContactShadowColor,     ShadowExLanguage.Get("影色 (乗算)", "Shadow Color (Multiply)"));
+                if(customContactShadowLength    != null) m_MaterialEditor.ShaderProperty(customContactShadowLength,    ShadowExLanguage.Get("レイ長 (m)", "Ray Length (m)"));
+                if(customContactShadowThickness != null) m_MaterialEditor.ShaderProperty(customContactShadowThickness, ShadowExLanguage.Get("厚み (m)", "Thickness (m)"));
+                if(customContactShadowBias      != null) m_MaterialEditor.ShaderProperty(customContactShadowBias,      ShadowExLanguage.Get("深度バイアス (m)", "Depth Bias (m)"));
+                if(customContactShadowBlur      != null) m_MaterialEditor.ShaderProperty(customContactShadowBlur,      ShadowExLanguage.Get("ぼかし", "Blur"));
+                if(customContactShadowBlurStrength != null) m_MaterialEditor.ShaderProperty(customContactShadowBlurStrength, ShadowExLanguage.Get("ぼかし強度", "Blur Strength"));
+                if(customContactShadowQuality   != null) m_MaterialEditor.ShaderProperty(customContactShadowQuality,   ShadowExLanguage.Get("品質 (8ステップ)", "Quality (x8 steps)"));
 
                 if(customContactShadowDither != null)
                 {
                     EditorGUI.BeginChangeCheck();
-                    bool dither = EditorGUILayout.Toggle("Dither (IGN)", customContactShadowDither.floatValue > 0.5f);
+                    bool dither = EditorGUILayout.Toggle(ShadowExLanguage.Get("ディザリング (IGN)", "Dither (IGN)"), customContactShadowDither.floatValue > 0.5f);
                     if(EditorGUI.EndChangeCheck()) customContactShadowDither.floatValue = dither ? 1f : 0f;
                 }
 
@@ -386,12 +398,18 @@ namespace dennokoworks
                 if(customContactShadowEnabled != null) EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.HelpBox(
-                    "深度バッファをライト方向へレイマーチして近距離の接地影を出すスクリーンスペースシャドウです。\n" +
-                    "SSAO同様、シャドウ付きDirectional Lightのあるワールドでのみ動作します(無効時は素通し)。\n" +
-                    "画面内に映っている遮蔽物しか影を落とせないため、Ray Lengthは短め(数cm)の近距離用途が前提です。\n" +
-                    "Blurで境界をぼかせます(0=くっきり)。Blur Strengthはその効き具合の倍率で、1超でさらに強くぼかせます(影は薄く柔らかくなります)。" +
-                    "遮蔽の深さと遮蔽物までの距離に応じて解析的にソフト化するため追加コストはありません。\n" +
-                    "影はShadow Colorの乗算で暗くなり、リム2nd/追加スペキュラのShadow Maskとも連動します。",
+                    ShadowExLanguage.Get(
+                        "深度バッファをライト方向へレイマーチして近距離の接地影を出すスクリーンスペースシャドウです。\n" +
+                        "SSAO同様、シャドウ付きDirectional Lightのあるワールドでのみ動作します(無効時は素通し)。\n" +
+                        "画面内に映っている遮蔽物しか影を落とせないため、Ray Lengthは短め(数cm)の近距離用途が前提です。\n" +
+                        "Blurで境界をぼかせます(0=くっきり)。Blur Strengthはその効き具合の倍率で、1超でさらに強くぼかせます(影は薄く柔らかくなります)。" +
+                        "遮蔽の深さと遮蔽物までの距離に応じて解析的にソフト化するため追加コストはありません。\n" +
+                        "影はShadow Colorの乗算で暗くなり、リム2nd/追加スペキュラのShadow Maskとも連動します。",
+                        "Screen space shadow raymarching depth buffer towards light for contact shadows.\n" +
+                        "Functions only in worlds with shadowed Directional Light (bypassed when disabled).\n" +
+                        "Only onscreen occluders cast shadows, intended for short distances (few cm).\n" +
+                        "Blur softs edges (0=sharp). Blur Strength scales softening with zero added cost.\n" +
+                        "Shadow darkens via Shadow Color multiplication, linked with Rim 2nd/Specular Shadow Mask."),
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();
@@ -409,34 +427,38 @@ namespace dennokoworks
                 if(customExtraNormalEnabled != null)
                 {
                     EditorGUI.BeginChangeCheck();
-                    bool exEnabled = EditorGUILayout.Toggle("Enable Extra Normals", customExtraNormalEnabled.floatValue > 0.5f);
+                    bool exEnabled = EditorGUILayout.Toggle(ShadowExLanguage.Get("拡張ノーマルを有効化", "Enable Extra Normals"), customExtraNormalEnabled.floatValue > 0.5f);
                     if(EditorGUI.EndChangeCheck()) customExtraNormalEnabled.floatValue = exEnabled ? 1f : 0f;
 
                     EditorGUI.BeginDisabledGroup(!exEnabled);
                 }
 
-                EditorGUILayout.LabelField("Normal 1st", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField(ShadowExLanguage.Get("ノーマル 1st", "Normal 1st"), EditorStyles.boldLabel);
                 if(customExtraNormal1stTex != null)
-                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("Normal Map 1st"), customExtraNormal1stTex);
-                if(customExtraNormalStrengthA != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthA, "Strength");
-                DrawTilingField(customExtraNormal1stScale, "Tiling");
+                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent(ShadowExLanguage.Get("ノーマルマップ 1st", "Normal Map 1st")), customExtraNormal1stTex);
+                if(customExtraNormalStrengthA != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthA, ShadowExLanguage.Get("強度", "Strength"));
+                DrawTilingField(customExtraNormal1stScale, ShadowExLanguage.Get("タイリング", "Tiling"));
                 DrawMaskChannelPopup(customExtraNormal1stMaskChannel);
 
                 EditorGUILayout.Space();
-                EditorGUILayout.LabelField("Normal 2nd", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField(ShadowExLanguage.Get("ノーマル 2nd", "Normal 2nd"), EditorStyles.boldLabel);
                 if(customExtraNormal2ndTex != null)
-                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent("Normal Map 2nd"), customExtraNormal2ndTex);
-                if(customExtraNormalStrengthB != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthB, "Strength");
-                DrawTilingField(customExtraNormal2ndScale, "Tiling");
+                    m_MaterialEditor.TexturePropertySingleLine(new GUIContent(ShadowExLanguage.Get("ノーマルマップ 2nd", "Normal Map 2nd")), customExtraNormal2ndTex);
+                if(customExtraNormalStrengthB != null) m_MaterialEditor.ShaderProperty(customExtraNormalStrengthB, ShadowExLanguage.Get("強度", "Strength"));
+                DrawTilingField(customExtraNormal2ndScale, ShadowExLanguage.Get("タイリング", "Tiling"));
                 DrawMaskChannelPopup(customExtraNormal2ndMaskChannel);
 
                 if(customExtraNormalEnabled != null) EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.HelpBox(
-                    "個別の接線空間ノーマルマップを2枚合成します。1st/2ndはそれぞれのTilingで別々にサンプルされます。" +
-                    "各StrengthはMask Channel(最上部のShared FX Mask 2枚xRGBA=8ch)の値で範囲制御されます(マスク白=全開)。" +
-                    "テクスチャのインポート設定は「Normal map」にしてください(lilToon本体のノーマルマップと同じ扱い)。" +
-                    "また本機能はlilToon本体のノーマルマップ機能が有効なときに合成されます。",
+                    ShadowExLanguage.Get(
+                        "個別の接線空間ノーマルマップを2枚合成します。1st/2ndはそれぞれのTilingで別々にサンプルされます。" +
+                        "各StrengthはMask Channel(最上部のShared FX Mask 2枚xRGBA=8ch)の値で範囲制御されます(マスク白=全開)。" +
+                        "テクスチャのインポート設定は「Normal map」にしてください(lilToon本体のノーマルマップと同じ扱い)。" +
+                        "また本機能はlilToon本体のノーマルマップ機能が有効なときに合成されます。",
+                        "Blends 2 individual tangent-space normal maps sampled with separate tilings.\n" +
+                        "Strengths masked by Mask Channel (8ch from Shared FX Mask 1/2).\n" +
+                        "Set texture import settings to Normal map. Blended when main lilToon normal map is enabled."),
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();
@@ -455,7 +477,7 @@ namespace dennokoworks
                 if(customRim2ndEnabled != null)
                 {
                     EditorGUI.BeginChangeCheck();
-                    rimEnabled = EditorGUILayout.Toggle("Enable Rim 2nd", customRim2ndEnabled.floatValue > 0.5f);
+                    rimEnabled = EditorGUILayout.Toggle(ShadowExLanguage.Get("リムライト 2nd を有効化", "Enable Rim 2nd"), customRim2ndEnabled.floatValue > 0.5f);
                     if(EditorGUI.EndChangeCheck()) customRim2ndEnabled.floatValue = rimEnabled ? 1f : 0f;
 
                     EditorGUI.BeginDisabledGroup(!rimEnabled);
@@ -466,37 +488,43 @@ namespace dennokoworks
                 if(customRim2ndMode != null)
                 {
                     EditorGUI.BeginChangeCheck();
-                    mode = EditorGUILayout.Popup("Mode", (int)(customRim2ndMode.floatValue + 0.5f), new string[]{ "Fresnel", "Depth Contour" });
+                    string[] modeOptions = ShadowExLanguage.IsJapanese ? new string[]{ "フレネル", "深度コンター" } : new string[]{ "Fresnel", "Depth Contour" };
+                    mode = EditorGUILayout.Popup(ShadowExLanguage.Get("モード", "Mode"), (int)(customRim2ndMode.floatValue + 0.5f), modeOptions);
                     if(EditorGUI.EndChangeCheck()) customRim2ndMode.floatValue = mode;
                 }
 
-                if(customRim2ndColor          != null) m_MaterialEditor.ShaderProperty(customRim2ndColor,          "Rim Color (HDR)");
-                if(customRim2ndMainStrength   != null) m_MaterialEditor.ShaderProperty(customRim2ndMainStrength,   "Main Color Strength");
-                if(customRim2ndEnableLighting != null) m_MaterialEditor.ShaderProperty(customRim2ndEnableLighting, "Enable Lighting");
-                if(customRim2ndShadowMask     != null) m_MaterialEditor.ShaderProperty(customRim2ndShadowMask,     "Shadow Mask");
+                if(customRim2ndColor          != null) m_MaterialEditor.ShaderProperty(customRim2ndColor,          ShadowExLanguage.Get("リム色 (HDR)", "Rim Color (HDR)"));
+                if(customRim2ndMainStrength   != null) m_MaterialEditor.ShaderProperty(customRim2ndMainStrength,   ShadowExLanguage.Get("メインカラー強度", "Main Color Strength"));
+                if(customRim2ndEnableLighting != null) m_MaterialEditor.ShaderProperty(customRim2ndEnableLighting, ShadowExLanguage.Get("ライティング有効", "Enable Lighting"));
+                if(customRim2ndShadowMask     != null) m_MaterialEditor.ShaderProperty(customRim2ndShadowMask,     ShadowExLanguage.Get("シャドウマスク", "Shadow Mask"));
 
                 if(mode == 0)
                 {
-                    EditorGUILayout.LabelField("Fresnel", EditorStyles.boldLabel);
-                    if(customRim2ndPower  != null) m_MaterialEditor.ShaderProperty(customRim2ndPower,  "Power");
-                    if(customRim2ndBorder != null) m_MaterialEditor.ShaderProperty(customRim2ndBorder, "Border");
-                    if(customRim2ndBlur   != null) m_MaterialEditor.ShaderProperty(customRim2ndBlur,   "Blur");
+                    EditorGUILayout.LabelField(ShadowExLanguage.Get("フレネル", "Fresnel"), EditorStyles.boldLabel);
+                    if(customRim2ndPower  != null) m_MaterialEditor.ShaderProperty(customRim2ndPower,  ShadowExLanguage.Get("シャープさ (Power)", "Power"));
+                    if(customRim2ndBorder != null) m_MaterialEditor.ShaderProperty(customRim2ndBorder, ShadowExLanguage.Get("境界", "Border"));
+                    if(customRim2ndBlur   != null) m_MaterialEditor.ShaderProperty(customRim2ndBlur,   ShadowExLanguage.Get("ぼかし", "Blur"));
                 }
                 else
                 {
-                    EditorGUILayout.LabelField("Depth Contour", EditorStyles.boldLabel);
-                    if(customRim2ndDepthWidth     != null) m_MaterialEditor.ShaderProperty(customRim2ndDepthWidth,     "Width (px)");
-                    if(customRim2ndDepthThreshold != null) m_MaterialEditor.ShaderProperty(customRim2ndDepthThreshold, "Threshold (m)");
+                    EditorGUILayout.LabelField(ShadowExLanguage.Get("深度コンター", "Depth Contour"), EditorStyles.boldLabel);
+                    if(customRim2ndDepthWidth     != null) m_MaterialEditor.ShaderProperty(customRim2ndDepthWidth,     ShadowExLanguage.Get("幅 (px)", "Width (px)"));
+                    if(customRim2ndDepthThreshold != null) m_MaterialEditor.ShaderProperty(customRim2ndDepthThreshold, ShadowExLanguage.Get("しきい値 (m)", "Threshold (m)"));
                 }
 
                 if(customRim2ndEnabled != null) EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.HelpBox(
-                    "エミッション段(ベースパス)で加算するリムライトです。追加ライトのパスでは加算されません。\n" +
-                    "Fresnel: 視線と法線の角度から輪郭を出します(追加サンプル無し)。\n" +
-                    "Depth Contour: _CameraDepthTextureでシルエット境界を検出します。" +
-                    "SSAO同様シャドウ付きDirectional Lightのあるワールドでのみ動作します(無効時は素通し)。\n" +
-                    "Enable Lighting=0で定数色、1でライト色に追従します。",
+                    ShadowExLanguage.Get(
+                        "エミッション段(ベースパス)で加算するリムライトです。追加ライトのパスでは加算されません。\n" +
+                        "Fresnel: 視線と法線の角度から輪郭を出します(追加サンプル無し)。\n" +
+                        "Depth Contour: _CameraDepthTextureでシルエット境界を検出します。" +
+                        "SSAO同様シャドウ付きDirectional Lightのあるワールドでのみ動作します(無効時は素通し)。\n" +
+                        "Enable Lighting=0で定数色、1でライト色に追従します。",
+                        "Additive rim light at base pass emission stage.\n" +
+                        "Fresnel: Outline based on view & normal angle (0 added texture samples).\n" +
+                        "Depth Contour: Detects silhouette edge via _CameraDepthTexture (world with light shadow required).\n" +
+                        "Enable Lighting: 0=Constant color, 1=Follows light color."),
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();
@@ -514,28 +542,32 @@ namespace dennokoworks
                 if(customRimShadeEnabled != null)
                 {
                     EditorGUI.BeginChangeCheck();
-                    bool rsEnabled = EditorGUILayout.Toggle("Enable Rim Shade", customRimShadeEnabled.floatValue > 0.5f);
+                    bool rsEnabled = EditorGUILayout.Toggle(ShadowExLanguage.Get("リムシェードを有効化", "Enable Rim Shade"), customRimShadeEnabled.floatValue > 0.5f);
                     if(EditorGUI.EndChangeCheck()) customRimShadeEnabled.floatValue = rsEnabled ? 1f : 0f;
 
                     EditorGUI.BeginDisabledGroup(!rsEnabled);
                 }
 
-                if(customRimShadeColor        != null) m_MaterialEditor.ShaderProperty(customRimShadeColor,        "Shade Color (Multiply)");
-                if(customRimShadeBorder       != null) m_MaterialEditor.ShaderProperty(customRimShadeBorder,       "Border");
-                if(customRimShadeBlur         != null) m_MaterialEditor.ShaderProperty(customRimShadeBlur,         "Blur");
-                if(customRimShadeFresnelPower != null) m_MaterialEditor.ShaderProperty(customRimShadeFresnelPower, "Fresnel Power");
+                if(customRimShadeColor        != null) m_MaterialEditor.ShaderProperty(customRimShadeColor,        ShadowExLanguage.Get("シェード色 (乗算)", "Shade Color (Multiply)"));
+                if(customRimShadeBorder       != null) m_MaterialEditor.ShaderProperty(customRimShadeBorder,       ShadowExLanguage.Get("境界", "Border"));
+                if(customRimShadeBlur         != null) m_MaterialEditor.ShaderProperty(customRimShadeBlur,         ShadowExLanguage.Get("ぼかし", "Blur"));
+                if(customRimShadeFresnelPower != null) m_MaterialEditor.ShaderProperty(customRimShadeFresnelPower, ShadowExLanguage.Get("フレネル強度", "Fresnel Power"));
 
                 DrawMaskChannelPopup(customRimShadeMaskChannel);
 
                 if(customRimShadeEnabled != null) EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.HelpBox(
-                    "視線と法線の角度から輪郭部をShade Colorの乗算で暗くするシンプルなリムシェードです。\n" +
-                    "計算はlilToon本体のRim Shadeと同等(頭方向ベースでVR両目差を抑制)ですが、" +
-                    "本体と異なりLiteシェーダーでも動作します。\n" +
-                    "ベースパスのエミッション直前で適用されるため、エミッションは暗くならず、" +
-                    "追加ライトのパスにもコストが増えません。\n" +
-                    "BorderとBlurで陰の境界位置とぼかしを調整します。アルファで全体の強度を下げられます。",
+                    ShadowExLanguage.Get(
+                        "視線と法線の角度から輪郭部をShade Colorの乗算で暗くするシンプルなリムシェードです。\n" +
+                        "計算はlilToon本体のRim Shadeと同等(頭方向ベースでVR両目差を抑制)ですが、" +
+                        "本体と異なりLiteシェーダーでも動作します。\n" +
+                        "ベースパスのエミッション直前で適用されるため、エミッションは暗くならず、" +
+                        "追加ライトのパスにもコストが増えません。\n" +
+                        "BorderとBlurで陰の境界位置とぼかしを調整します。アルファで全体の強度を下げられます。",
+                        "Simple rim shade darkening contour with Shade Color multiplication.\n" +
+                        "Identical math to lilToon Rim Shade (head-vector based for VR eye parity), works in Lite shader.\n" +
+                        "Applied before emission in base pass, maintaining emission brightness with no added cost in add pass."),
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();
@@ -553,36 +585,42 @@ namespace dennokoworks
                 if(customSpecEnabled != null)
                 {
                     EditorGUI.BeginChangeCheck();
-                    bool specEnabled = EditorGUILayout.Toggle("Enable Add Specular", customSpecEnabled.floatValue > 0.5f);
+                    bool specEnabled = EditorGUILayout.Toggle(ShadowExLanguage.Get("追加スペキュラを有効化", "Enable Add Specular"), customSpecEnabled.floatValue > 0.5f);
                     if(EditorGUI.EndChangeCheck()) customSpecEnabled.floatValue = specEnabled ? 1f : 0f;
 
                     EditorGUI.BeginDisabledGroup(!specEnabled);
                 }
 
-                if(customSpecColor      != null) m_MaterialEditor.ShaderProperty(customSpecColor,      "Specular Color (HDR)");
-                if(customSpecSmoothness != null) m_MaterialEditor.ShaderProperty(customSpecSmoothness, "Smoothness");
-                if(customSpecStrength   != null) m_MaterialEditor.ShaderProperty(customSpecStrength,   "Strength");
+                if(customSpecColor      != null) m_MaterialEditor.ShaderProperty(customSpecColor,      ShadowExLanguage.Get("スペキュラ色 (HDR)", "Specular Color (HDR)"));
+                if(customSpecSmoothness != null) m_MaterialEditor.ShaderProperty(customSpecSmoothness, ShadowExLanguage.Get("スムーズネス", "Smoothness"));
+                if(customSpecStrength   != null) m_MaterialEditor.ShaderProperty(customSpecStrength,   ShadowExLanguage.Get("強度", "Strength"));
 
                 // Blend mode: 0=Normal / 1=Add / 2=Screen / 3=Multiply
                 if(customSpecBlendMode != null)
                 {
                     EditorGUI.BeginChangeCheck();
-                    int blend = EditorGUILayout.Popup("Blend Mode", (int)(customSpecBlendMode.floatValue + 0.5f), new string[]{ "Normal", "Add", "Screen", "Multiply" });
+                    string[] blendOptions = ShadowExLanguage.IsJapanese ? new string[]{ "通常", "加算", "スクリーン", "乗算" } : new string[]{ "Normal", "Add", "Screen", "Multiply" };
+                    int blend = EditorGUILayout.Popup(ShadowExLanguage.Get("合成モード", "Blend Mode"), (int)(customSpecBlendMode.floatValue + 0.5f), blendOptions);
                     if(EditorGUI.EndChangeCheck()) customSpecBlendMode.floatValue = blend;
                 }
 
-                if(customSpecEnableLighting != null) m_MaterialEditor.ShaderProperty(customSpecEnableLighting, "Enable Lighting");
-                if(customSpecShadowMask     != null) m_MaterialEditor.ShaderProperty(customSpecShadowMask,     "Shadow Mask");
+                if(customSpecEnableLighting != null) m_MaterialEditor.ShaderProperty(customSpecEnableLighting, ShadowExLanguage.Get("ライティング有効", "Enable Lighting"));
+                if(customSpecShadowMask     != null) m_MaterialEditor.ShaderProperty(customSpecShadowMask,     ShadowExLanguage.Get("シャドウマスク", "Shadow Mask"));
 
                 DrawMaskChannelPopup(customSpecMaskChannel);
 
                 if(customSpecEnabled != null) EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.HelpBox(
-                    "エミッション段(ベースパス)で加算するスタイライズドスペキュラです。追加ライトのパスでは加算されません。\n" +
-                    "メインライト方向とのハーフベクトルからBlinn-Phongハイライトを算出します(追加サンプルは共有FXマスクのみ)。\n" +
-                    "Mask Channelは最上部のShared FX Mask(2枚xRGBA=8ch)の使用チャンネルです。\n" +
-                    "Shadow Mask=1で影部のスペキュラを抑制、Enable Lighting=1でライト色に追従します。",
+                    ShadowExLanguage.Get(
+                        "エミッション段(ベースパス)で加算するスタイライズドスペキュラです。追加ライトのパスでは加算されません。\n" +
+                        "メインライト方向とのハーフベクトルからBlinn-Phongハイライトを算出します(追加サンプルは共有FXマスクのみ)。\n" +
+                        "Mask Channelは最上部のShared FX Mask(2枚xRGBA=8ch)の使用チャンネルです。\n" +
+                        "Shadow Mask=1で影部のスペキュラを抑制、Enable Lighting=1でライト色に追従します。",
+                        "Stylized specular added at base pass emission stage.\n" +
+                        "Calculates Blinn-Phong highlight from main light half-vector.\n" +
+                        "Mask Channel uses Shared FX Mask (8ch).\n" +
+                        "Shadow Mask=1 suppresses specular in shadow, Enable Lighting=1 follows light color."),
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();
@@ -600,20 +638,20 @@ namespace dennokoworks
                 for(int i = 0; i < 3; i++)
                 {
                     if(i > 0) EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Layer " + (i + 1), EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField(ShadowExLanguage.Get("レイヤー ", "Layer ") + (i + 1), EditorStyles.boldLabel);
                     DrawMenuButton(i == 0 ? CustomPropertyBlock.MatCapLayer1 : (i == 1 ? CustomPropertyBlock.MatCapLayer2 : CustomPropertyBlock.MatCapLayer3));
 
                     if(customMatCapLayerEnabled[i] != null)
                     {
                         EditorGUI.BeginChangeCheck();
-                        bool layerEnabled = EditorGUILayout.Toggle("Enable", customMatCapLayerEnabled[i].floatValue > 0.5f);
+                        bool layerEnabled = EditorGUILayout.Toggle(ShadowExLanguage.Get("有効化", "Enable"), customMatCapLayerEnabled[i].floatValue > 0.5f);
                         if(EditorGUI.EndChangeCheck()) customMatCapLayerEnabled[i].floatValue = layerEnabled ? 1f : 0f;
 
                         EditorGUI.BeginDisabledGroup(!layerEnabled);
                     }
 
                     if(customMatCapLayerTex[i] != null && customMatCapLayerColor[i] != null)
-                        m_MaterialEditor.TexturePropertySingleLine(new GUIContent("MatCap / Color (HDR)"), customMatCapLayerTex[i], customMatCapLayerColor[i]);
+                        m_MaterialEditor.TexturePropertySingleLine(new GUIContent(ShadowExLanguage.Get("MatCap / カラー (HDR)", "MatCap / Color (HDR)")), customMatCapLayerTex[i], customMatCapLayerColor[i]);
                     else if(customMatCapLayerTex[i] != null)
                         m_MaterialEditor.TexturePropertySingleLine(new GUIContent("MatCap"), customMatCapLayerTex[i]);
 
@@ -621,12 +659,13 @@ namespace dennokoworks
                     if(customMatCapLayerBlendMode[i] != null)
                     {
                         EditorGUI.BeginChangeCheck();
-                        int blend = EditorGUILayout.Popup("Blend Mode", (int)(customMatCapLayerBlendMode[i].floatValue + 0.5f), new string[]{ "Normal", "Add", "Screen", "Multiply" });
+                        string[] blendOptions = ShadowExLanguage.IsJapanese ? new string[]{ "通常", "加算", "スクリーン", "乗算" } : new string[]{ "Normal", "Add", "Screen", "Multiply" };
+                        int blend = EditorGUILayout.Popup(ShadowExLanguage.Get("合成モード", "Blend Mode"), (int)(customMatCapLayerBlendMode[i].floatValue + 0.5f), blendOptions);
                         if(EditorGUI.EndChangeCheck()) customMatCapLayerBlendMode[i].floatValue = blend;
                     }
 
-                    if(customMatCapLayerEnableLighting[i] != null) m_MaterialEditor.ShaderProperty(customMatCapLayerEnableLighting[i], "Enable Lighting");
-                    if(customMatCapLayerShadowMask[i]     != null) m_MaterialEditor.ShaderProperty(customMatCapLayerShadowMask[i],     "Shadow Mask");
+                    if(customMatCapLayerEnableLighting[i] != null) m_MaterialEditor.ShaderProperty(customMatCapLayerEnableLighting[i], ShadowExLanguage.Get("ライティング有効", "Enable Lighting"));
+                    if(customMatCapLayerShadowMask[i]     != null) m_MaterialEditor.ShaderProperty(customMatCapLayerShadowMask[i],     ShadowExLanguage.Get("シャドウマスク", "Shadow Mask"));
 
                     DrawMaskChannelPopup(customMatCapLayerMaskChannel[i]);
 
@@ -634,13 +673,19 @@ namespace dennokoworks
                 }
 
                 EditorGUILayout.HelpBox(
-                    "lilToon本体のMatCap(1st/2nd)とは別に、最大3枚のMatCapを追加合成します。\n" +
-                    "UVはlilToonのMatCap UV(fd.uvMat)を再利用し、サンプラーも共有するため軽量です" +
-                    "(有効なレイヤー数ぶんのテクスチャサンプルのみ追加)。\n" +
-                    "AddやScreenで光沢を足す場合は黒背景のMatCap、Multiplyで陰影を乗せる場合は白背景のMatCapを使ってください。\n" +
-                    "ベースパス限定のため追加ライトで二重加算されず、SSAO/コンタクトシャドウはレイヤーの上からも暗く乗ります。\n" +
-                    "Shadow Mask=1で影部のレイヤーを抑制、Enable Lighting=1でライト色に追従します。" +
-                    "Mask Channelは最上部のShared FX Mask(2枚xRGBA=8ch)の使用チャンネルです(マスクのサンプルは全FXで共有)。",
+                    ShadowExLanguage.Get(
+                        "lilToon本体のMatCap(1st/2nd)とは別に、最大3枚のMatCapを追加合成します。\n" +
+                        "UVはlilToonのMatCap UV(fd.uvMat)を再利用し、サンプラーも共有するため軽量です" +
+                        "(有効なレイヤー数ぶんのテクスチャサンプルのみ追加)。\n" +
+                        "AddやScreenで光沢を足す場合は黒背景のMatCap、Multiplyで陰影を乗せる場合は白背景のMatCapを使ってください。\n" +
+                        "ベースパス限定のため追加ライトで二重加算されず、SSAO/コンタクトシャドウはレイヤーの上からも暗く乗ります。\n" +
+                        "Shadow Mask=1で影部のレイヤーを抑制、Enable Lighting=1でライト色に追従します。" +
+                        "Mask Channelは最上部のShared FX Mask(2枚xRGBA=8ch)の使用チャンネルです(マスクのサンプルは全FXで共有)。",
+                        "Applies up to 3 additional MatCaps in addition to main lilToon MatCaps (1st/2nd).\n" +
+                        "Reuses lilToon MatCap UVs and samplers for lightweight performance.\n" +
+                        "Use black background MatCaps for Add/Screen, white background for Multiply.\n" +
+                        "Base pass only; SSAO/Contact Shadows overlay on top.\n" +
+                        "Shadow Mask=1 suppresses layer in shadows, Enable Lighting=1 follows light color."),
                     MessageType.Info);
 
                 EditorGUILayout.EndVertical();
@@ -655,7 +700,7 @@ namespace dennokoworks
             if(prop == null) return;
             EditorGUI.BeginChangeCheck();
             int current = Mathf.Clamp((int)(prop.floatValue + 0.5f), 0, maskChannelNames.Length - 1);
-            int ch = EditorGUILayout.Popup("Mask Channel", current, maskChannelNames);
+            int ch = EditorGUILayout.Popup(ShadowExLanguage.Get("マスクチャンネル", "Mask Channel"), current, maskChannelNames);
             if(EditorGUI.EndChangeCheck()) prop.floatValue = ch;
         }
 

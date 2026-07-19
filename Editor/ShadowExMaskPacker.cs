@@ -16,7 +16,8 @@ namespace dennokoworks
     public class ShadowExMaskPacker : EditorWindow
     {
         static readonly string[] channelNames = { "R", "G", "B", "A" };
-        static readonly string[] sourceChannelNames = { "読取 R", "読取 G", "読取 B", "読取 A" };
+        static readonly string[] sourceChannelNamesJa = { "読取 R", "読取 G", "読取 B", "読取 A" };
+        static readonly string[] sourceChannelNamesEn = { "Read R", "Read G", "Read B", "Read A" };
 
         Texture2D baseTex;                                // 合成先 (任意)
         readonly Texture2D[] sources = new Texture2D[4];  // 出力R/G/B/Aチャンネルへの入力画像
@@ -32,19 +33,26 @@ namespace dennokoworks
         void OnGUI()
         {
             EditorGUILayout.HelpBox(
-                "マスク画像(1~4枚)をRGBAチャンネルへパックしたPNGを生成します。\n" +
-                "解像度が異なる場合は最大解像度に合わせて拡大合成します。\n" +
-                "合成先を指定すると、そのテクスチャを下地に画像を割り当てたチャンネルだけ上書きします。\n" +
-                "グレースケール画像はそのまま(読取R)、パック済み画像から抽出する場合は読取chを変更してください。",
+                ShadowExLanguage.Get(
+                    "マスク画像(1~4枚)をRGBAチャンネルへパックしたPNGを生成します。\n" +
+                    "解像度が異なる場合は最大解像度に合わせて拡大合成します。\n" +
+                    "合成先を指定すると、そのテクスチャを下地に画像を割り当てたチャンネルだけ上書きします。\n" +
+                    "グレースケール画像はそのまま(読取R)、パック済み画像から抽出する場合は読取chを変更してください。",
+                    "Packs 1-4 mask images into PNG RGBA channels.\n" +
+                    "Rescales images to max resolution if dimensions differ.\n" +
+                    "Specifying a Base texture overwrites only assigned channels on top of it.\n" +
+                    "Use Read R for grayscale images, or change Read ch to extract from packed textures."),
                 MessageType.Info);
 
-            baseTex = (Texture2D)EditorGUILayout.ObjectField("合成先 (任意)", baseTex, typeof(Texture2D), false);
+            baseTex = (Texture2D)EditorGUILayout.ObjectField(ShadowExLanguage.Get("合成先 (任意)", "Base Texture (Optional)"), baseTex, typeof(Texture2D), false);
+
+            string[] sourceChannelNames = ShadowExLanguage.IsJapanese ? sourceChannelNamesJa : sourceChannelNamesEn;
 
             EditorGUILayout.Space();
             for(int i = 0; i < 4; i++)
             {
                 EditorGUILayout.BeginHorizontal();
-                sources[i] = (Texture2D)EditorGUILayout.ObjectField("出力 " + channelNames[i], sources[i], typeof(Texture2D), false);
+                sources[i] = (Texture2D)EditorGUILayout.ObjectField(ShadowExLanguage.Get("出力 ", "Output ") + channelNames[i], sources[i], typeof(Texture2D), false);
                 EditorGUI.BeginDisabledGroup(sources[i] == null);
                 sourceChannels[i] = EditorGUILayout.Popup(sourceChannels[i], sourceChannelNames, GUILayout.Width(72f));
                 EditorGUI.EndDisabledGroup();
@@ -55,11 +63,11 @@ namespace dennokoworks
             GetOutputSize(out outW, out outH);
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("出力解像度", outW > 0 ? outW + " x " + outH + " (入力の最大解像度)" : "-");
-            EditorGUILayout.LabelField("空きチャンネル", baseTex != null ? "合成先の値を保持" : "白(1)で埋める");
+            EditorGUILayout.LabelField(ShadowExLanguage.Get("出力解像度", "Output Resolution"), outW > 0 ? outW + " x " + outH + ShadowExLanguage.Get(" (入力の最大解像度)", " (Max input resolution)") : "-");
+            EditorGUILayout.LabelField(ShadowExLanguage.Get("空きチャンネル", "Unassigned Channels"), baseTex != null ? ShadowExLanguage.Get("合成先の値を保持", "Keep base texture value") : ShadowExLanguage.Get("白(1)で埋める", "Fill with White (1)"));
 
             EditorGUI.BeginDisabledGroup(outW <= 0);
-            if(GUILayout.Button("生成して保存...")) Pack(outW, outH);
+            if(GUILayout.Button(ShadowExLanguage.Get("生成して保存...", "Generate & Save..."))) Pack(outW, outH);
             EditorGUI.EndDisabledGroup();
         }
 
@@ -92,7 +100,7 @@ namespace dennokoworks
                 var pixels = new Color[width * height];
                 if(baseTex != null)
                 {
-                    EditorUtility.DisplayProgressBar("FX Mask Packer", "合成先を読み込み中...", 0f);
+                    EditorUtility.DisplayProgressBar("FX Mask Packer", ShadowExLanguage.Get("合成先を読み込み中...", "Reading base texture..."), 0f);
                     ReadInto(baseTex, width, height, pixels, -1, -1);
                 }
                 else
@@ -103,11 +111,11 @@ namespace dennokoworks
                 for(int ch = 0; ch < 4; ch++)
                 {
                     if(sources[ch] == null) continue;
-                    EditorUtility.DisplayProgressBar("FX Mask Packer", "出力 " + channelNames[ch] + " チャンネルを合成中...", (ch + 1) / 5f);
+                    EditorUtility.DisplayProgressBar("FX Mask Packer", ShadowExLanguage.Get("出力 ", "Packing Output ") + channelNames[ch] + ShadowExLanguage.Get(" チャンネルを合成中...", " channel..."), (ch + 1) / 5f);
                     ReadInto(sources[ch], width, height, pixels, sourceChannels[ch], ch);
                 }
 
-                EditorUtility.DisplayProgressBar("FX Mask Packer", "PNGを書き出し中...", 0.9f);
+                EditorUtility.DisplayProgressBar("FX Mask Packer", ShadowExLanguage.Get("PNGを書き出し中...", "Exporting PNG..."), 0.9f);
                 var outTex = new Texture2D(width, height, TextureFormat.RGBA32, false, true);
                 outTex.SetPixels(pixels);
                 outTex.Apply();
@@ -154,7 +162,11 @@ namespace dennokoworks
                 if(!string.IsNullOrEmpty(bp) && Path.GetExtension(bp).ToLowerInvariant() == ".png")
                     name = Path.GetFileNameWithoutExtension(bp);
             }
-            return EditorUtility.SaveFilePanelInProject("FX Maskを保存", name, "png", "パックしたFXマスクの保存先を選択してください", dir);
+            return EditorUtility.SaveFilePanelInProject(
+                ShadowExLanguage.Get("FX Maskを保存", "Save FX Mask"),
+                name, "png",
+                ShadowExLanguage.Get("パックしたFXマスクの保存先を選択してください", "Select save location for packed FX mask"),
+                dir);
         }
 
         // tex を出力解像度へリサンプルしながら pixels へ書き込む。
