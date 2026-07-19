@@ -26,6 +26,7 @@
     float  _CustomSSAOMinDistance; \
     float  _CustomSSAOMaxDistance; \
     float  _CustomSSAOBias; \
+    float  _CustomSSAOFadeDistance; \
     float  _CustomSSAOBlur; \
     float  _CustomSSAODither; \
     float  _CustomSSAOQuality; \
@@ -240,8 +241,9 @@
     } \
     if (_CustomSSAOEnabled > 0.5 && LIL_ENABLED_DEPTH_TEX) \
     { \
-        float aoRate = lilShadowExCalcSSAO(fd.positionWS, fd.positionCS); \
-        float aoFactor = saturate(pow(saturate(aoRate), _CustomSSAOPower) * _CustomSSAOStrength); \
+        float aoFade; \
+        float aoRate = lilShadowExCalcSSAO(fd.positionWS, fd.positionCS, aoFade); \
+        float aoFactor = saturate(pow(saturate(aoRate), _CustomSSAOPower) * _CustomSSAOStrength) * aoFade; \
         fd.col.rgb = lerp(fd.col.rgb, fd.col.rgb * _CustomSSAOColor.rgb, aoFactor * _CustomSSAOColor.a); \
     } \
     if (_CustomContactShadowEnabled > 0.5 && LIL_ENABLED_DEPTH_TEX) \

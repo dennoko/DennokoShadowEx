@@ -10,6 +10,10 @@
 //   4. 「中心→サンプル点」の方向と「中心→カメラ」の方向の内積 (角度) を平均して遮蔽度とする
 //      (遮蔽物が手前にあるほどサンプル方向がカメラ側へ傾き、内積が大きくなる)
 //
+// 距離系パラメータは FoV と距離から求めた「見かけサイズ」で正規化しており、
+// FoV設定やカメラズーム、VR/デスクトップの違いに依らず画面上の見え方が一定になる
+// (lilShadowExCalcSSAO の viewScale 参照)
+//
 // 平滑化 (ポストプロセスのブラーパスの代替):
 //   - Quality: サンプリングパターンを 60°/K ずつ回転させながらK回実行して平均。
 //     角度方向の隙間が埋まりバンディングが消える (インライン回転スーパーサンプリング)
@@ -75,8 +79,9 @@ float lilShadowExIGN(float2 positionCS)
     return frac(52.9829189 * frac(dot(positionCS, float2(0.06711056, 0.00583715))));
 }
 
-// 1サンプル点分の遮蔽寄与を計算する (寄与なしで0)
-float lilShadowExSampleOcclusion(float3 offsetPos, float3 centerVS, float centerEyeDepth, float3 surfaceToCameraDir, float minDist)
+// 1サンプル点分の遮蔽寄与を計算する (寄与なしで0)。
+// biasValue / minDist / maxDist は呼び出し側で viewScale 補正済みの値を渡す
+float lilShadowExSampleOcclusion(float3 offsetPos, float3 centerVS, float centerEyeDepth, float3 surfaceToCameraDir, float biasValue, float minDist, float maxDist)
 {
     float eyeDepth;
     if (!lilShadowExSampleEyeDepth(offsetPos, eyeDepth)) return 0.0;
@@ -84,12 +89,12 @@ float lilShadowExSampleOcclusion(float3 offsetPos, float3 centerVS, float center
     // ほぼ同一深度 (同一平面) のサンプルはAOに寄与させない。
     // Blur>0 では bias 境界を smoothstep で広げて寄与を連続化する (0 で従来の二値判定と一致)
     float depthDiff = abs(centerEyeDepth - eyeDepth);
-    float biasWeight = smoothstep(_CustomSSAOBias, _CustomSSAOBias * (1.0 + _CustomSSAOBlur) + 1e-5, depthDiff);
+    float biasWeight = smoothstep(biasValue, biasValue * (1.0 + _CustomSSAOBlur) + 1e-5, depthDiff);
     if (biasWeight <= 0.0) return 0.0;
 
     float3 samplePos = lilShadowExReconstructVS(offsetPos, eyeDepth);
     float dist = distance(samplePos, centerVS);
-    if (dist > _CustomSSAOMaxDistance) return 0.0;
+    if (dist > maxDist) return 0.0;
     // Blur>0 では minDist 境界もソフト化する
     float minWeight = smoothstep(minDist * saturate(1.0 - _CustomSSAOBlur), minDist + 1e-5, dist);
     if (minWeight <= 0.0) return 0.0;
@@ -97,7 +102,7 @@ float lilShadowExSampleOcclusion(float3 offsetPos, float3 centerVS, float center
     // 中心→サンプル点の方向がカメラ方向へ傾くほど遮蔽されていると判定
     float d = dot((samplePos - centerVS) / dist, surfaceToCameraDir);
     // 遠いサンプルほど寄与を減衰させてソフトな見た目にする
-    float falloff = 1.0 - saturate(dist / _CustomSSAOMaxDistance);
+    float falloff = 1.0 - saturate(dist / maxDist);
     return max(0.0, d) * falloff * biasWeight * minWeight;
 }
 
@@ -309,13 +314,31 @@ float3 lilShadowExMatCapLayer(float3 col, float4 mc, float3 lightColor, float sh
 }
 
 // アングルベースAO本体。遮蔽度 (0..1) を返す。
-float lilShadowExCalcSSAO(float3 positionWS, float4 positionCS)
+// aoFade には遠景フェード係数 (0..1) を返す。呼び出し側で最終強度に乗算すること。
+float lilShadowExCalcSSAO(float3 positionWS, float4 positionCS, out float aoFade)
 {
+    aoFade = 0.0;
+
     // 平行投影では視線レイによる復元が成り立たないためスキップ
     if (!lilIsPerspective()) return 0.0;
 
     float3 centerVS = mul(LIL_MATRIX_V, float4(positionWS, 1.0)).xyz;
     float centerEyeDepth = -centerVS.z;
+
+    // FoV・距離補正: 基準 (FoV60°, 1m) の見かけサイズに正規化し、FoV設定やカメラズーム、
+    // VR/デスクトップの違いに依らず画面上のAOの見え方を均一化する。
+    // _m11 = 1/tan(fovY/2)。VRでは片目ごとの射影が入るためHMDのFoVも自動反映される
+    const float REF_M11 = 1.7320508; // 1/tan(30°) = FoV 60°
+    float apparentDist = centerEyeDepth * REF_M11 / abs(LIL_MATRIX_P._m11);
+    float viewScale = max(apparentDist, 0.01);
+
+    // 遠景ではサンプル間隔に対して深度差が粗くなるためフェードアウトさせる。
+    // 距離は見かけ距離で判定するため、ズーム撮影 (大写し) ではフェードしない。
+    // 結果が0ならサンプリングごとスキップする
+    float fadeLength = max(_CustomSSAOFadeDistance * 0.25, 1e-3);
+    aoFade = saturate((_CustomSSAOFadeDistance - apparentDist) / fadeLength);
+    if (aoFade <= 0.001) return 0.0;
+
     float3 surfaceToCameraDir = -normalize(centerVS);
 
     // ピクセルごとにサンプリングパターンを回転してバンディングをノイズ化 (任意)
@@ -325,7 +348,11 @@ float lilShadowExCalcSSAO(float3 positionWS, float4 positionCS)
     // 回転用IGNと相関しないよう座標をオフセットした2つ目のIGNを使う
     float radiusScale = lerp(1.0, 0.7 + 0.6 * lilShadowExIGN(positionCS.xy + 17.0), _CustomSSAOBlur);
 
-    float minDist = max(_CustomSSAOMinDistance, 0.0001);
+    // 距離系パラメータは「FoV60°・距離1mで見たときの値」として viewScale でスケールする
+    float sampleLen = _CustomSSAOSampleLength * viewScale;
+    float minDist = max(_CustomSSAOMinDistance * viewScale, 0.0001);
+    float maxDist = max(_CustomSSAOMaxDistance * viewScale, 0.001);
+    float biasValue = _CustomSSAOBias * viewScale;
     uint iterations = (uint)clamp(_CustomSSAOQuality + 0.5, 1.0, 4.0);
     // パターンは約60°周期なので、反復ごとに 60°/K ずつ回転させて角度の隙間を埋める
     float iterationStep = (LIL_PI / 3.0) / (float)iterations;
@@ -340,14 +367,14 @@ float lilShadowExCalcSSAO(float3 positionWS, float4 positionCS)
         {
             float rad = LIL_SHADOWEX_SSAO_ROTATIONS[i] + baseRad;
             // 反復ごとに距離の割り当てもローテーションし、半径方向の隙間も埋める
-            float offsetLen = LIL_SHADOWEX_SSAO_DISTANCES[(i + k) % 6] * _CustomSSAOSampleLength * radiusScale;
+            float offsetLen = LIL_SHADOWEX_SSAO_DISTANCES[(i + k) % 6] * sampleLen * radiusScale;
             float2 dir;
             sincos(rad, dir.y, dir.x);
 
             // ビュー空間XY平面上の対称2点
             float3 offsetA = float3(dir * offsetLen, 0.0);
-            occludedAcc += lilShadowExSampleOcclusion(centerVS + offsetA, centerVS, centerEyeDepth, surfaceToCameraDir, minDist);
-            occludedAcc += lilShadowExSampleOcclusion(centerVS - offsetA, centerVS, centerEyeDepth, surfaceToCameraDir, minDist);
+            occludedAcc += lilShadowExSampleOcclusion(centerVS + offsetA, centerVS, centerEyeDepth, surfaceToCameraDir, biasValue, minDist, maxDist);
+            occludedAcc += lilShadowExSampleOcclusion(centerVS - offsetA, centerVS, centerEyeDepth, surfaceToCameraDir, biasValue, minDist, maxDist);
         }
     }
 
