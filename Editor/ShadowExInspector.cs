@@ -975,16 +975,17 @@ namespace dennokoworks
             ltscoo      = ltsco;
             ltstoo      = ltsto;
 
-            ltstess     = lts;    // Tessellation -> 非Tess相当
-            ltstessc    = ltsc;
-            ltstesst    = ltst;
-            ltstessot   = ltsot;
-            ltstesstt   = ltstt;
-            ltstesso    = ltso;
-            ltstessco   = ltsco;
-            ltstessto   = ltsto;
-            ltstessoto  = ltsoto;
-            ltstesstto  = ltstto;
+            ltstess     = Shader.Find("Hidden/" + shaderName + "/Tessellation/Opaque");
+            ltstessc    = Shader.Find("Hidden/" + shaderName + "/Tessellation/Cutout");
+            ltstesst    = Shader.Find("Hidden/" + shaderName + "/Tessellation/Transparent");
+            ltstessot   = Shader.Find("Hidden/" + shaderName + "/Tessellation/OnePassTransparent");
+            ltstesstt   = Shader.Find("Hidden/" + shaderName + "/Tessellation/TwoPassTransparent");
+
+            ltstesso    = Shader.Find("Hidden/" + shaderName + "/Tessellation/OpaqueOutline");
+            ltstessco   = Shader.Find("Hidden/" + shaderName + "/Tessellation/CutoutOutline");
+            ltstessto   = Shader.Find("Hidden/" + shaderName + "/Tessellation/TransparentOutline");
+            ltstessoto  = Shader.Find("Hidden/" + shaderName + "/Tessellation/OnePassTransparentOutline");
+            ltstesstto  = Shader.Find("Hidden/" + shaderName + "/Tessellation/TwoPassTransparentOutline");
 
             ltsref      = ltst;   // Refraction -> Transparent
             ltsrefb     = ltst;
