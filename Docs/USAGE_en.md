@@ -37,6 +37,7 @@ A shared mask texture system using **2 RGBA textures (8 channels in total)** acr
 Calculates real-time ambient occlusion shadows in crevices and contact areas using the camera depth buffer (`_CameraDepthTexture`).
 
 > ⚠️ **Requirement**: Functions in environments like VRChat where `_CameraDepthTexture` is enabled (e.g., worlds with shadowed Directional Light).
+To ensure SSAO renders regardless of the world, place `LightForDepth` (found in `Assets/dennokoworks/ShadowEx/` after importing the unitypackage) under your avatar.
 
 * **Key Parameters**:
   * **Enable SSAO (`_CustomSSAOEnabled`)**: Toggles SSAO ON/OFF.
