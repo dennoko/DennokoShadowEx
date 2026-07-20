@@ -173,7 +173,7 @@
         rim2 = lerp(rim2, rim2 * fd.shadowmix, _CustomRim2ndShadowMask); \
         float3 rim2Col = lerp(_CustomRim2ndColor.rgb, _CustomRim2ndColor.rgb * fd.albedo, _CustomRim2ndMainStrength); \
         rim2Col = lerp(rim2Col, rim2Col * fd.lightColor, _CustomRim2ndEnableLighting); \
-        fd.col.rgb += rim2Col * (rim2 * _CustomRim2ndColor.a); \
+        fd.col.rgb += rim2Col * (rim2 * _CustomRim2ndColor.a) * LIL_SHADOWEX_PREMUL_A; \
     } \
     if (_CustomSpecEnabled > 0.5) \
     { \
@@ -182,6 +182,7 @@
         float specAmt = spec * _CustomSpecStrength * specMask * _CustomSpecColor.a; \
         specAmt = lerp(specAmt, specAmt * fd.shadowmix, _CustomSpecShadowMask); \
         float3 specCol = lerp(_CustomSpecColor.rgb, _CustomSpecColor.rgb * fd.lightColor, _CustomSpecEnableLighting); \
+        specCol *= lilShadowExPremulFactor(_CustomSpecBlendMode, LIL_SHADOWEX_PREMUL_A); \
         fd.col.rgb = lilBlendColor(fd.col.rgb, specCol, saturate(specAmt), (uint)_CustomSpecBlendMode); \
     }
 
@@ -227,17 +228,17 @@
     if (_CustomMatCapLayer1Enabled > 0.5) \
     { \
         float4 mc1 = LIL_SAMPLE_2D(_CustomMatCapLayer1Tex, sampler_linear_repeat, fd.uvMat) * _CustomMatCapLayer1Color; \
-        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc1, fd.lightColor, fd.shadowmix, lilShadowExSelectMaskCh(_CustomMatCapLayer1MaskChannel), _CustomMatCapLayer1BlendMode, _CustomMatCapLayer1EnableLighting, _CustomMatCapLayer1ShadowMask); \
+        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc1, fd.lightColor, fd.shadowmix, lilShadowExSelectMaskCh(_CustomMatCapLayer1MaskChannel), _CustomMatCapLayer1BlendMode, _CustomMatCapLayer1EnableLighting, _CustomMatCapLayer1ShadowMask, LIL_SHADOWEX_PREMUL_A); \
     } \
     if (_CustomMatCapLayer2Enabled > 0.5) \
     { \
         float4 mc2 = LIL_SAMPLE_2D(_CustomMatCapLayer2Tex, sampler_linear_repeat, fd.uvMat) * _CustomMatCapLayer2Color; \
-        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc2, fd.lightColor, fd.shadowmix, lilShadowExSelectMaskCh(_CustomMatCapLayer2MaskChannel), _CustomMatCapLayer2BlendMode, _CustomMatCapLayer2EnableLighting, _CustomMatCapLayer2ShadowMask); \
+        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc2, fd.lightColor, fd.shadowmix, lilShadowExSelectMaskCh(_CustomMatCapLayer2MaskChannel), _CustomMatCapLayer2BlendMode, _CustomMatCapLayer2EnableLighting, _CustomMatCapLayer2ShadowMask, LIL_SHADOWEX_PREMUL_A); \
     } \
     if (_CustomMatCapLayer3Enabled > 0.5) \
     { \
         float4 mc3 = LIL_SAMPLE_2D(_CustomMatCapLayer3Tex, sampler_linear_repeat, fd.uvMat) * _CustomMatCapLayer3Color; \
-        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc3, fd.lightColor, fd.shadowmix, lilShadowExSelectMaskCh(_CustomMatCapLayer3MaskChannel), _CustomMatCapLayer3BlendMode, _CustomMatCapLayer3EnableLighting, _CustomMatCapLayer3ShadowMask); \
+        fd.col.rgb = lilShadowExMatCapLayer(fd.col.rgb, mc3, fd.lightColor, fd.shadowmix, lilShadowExSelectMaskCh(_CustomMatCapLayer3MaskChannel), _CustomMatCapLayer3BlendMode, _CustomMatCapLayer3EnableLighting, _CustomMatCapLayer3ShadowMask, LIL_SHADOWEX_PREMUL_A); \
     } \
     if (_CustomSSAOEnabled > 0.5 && LIL_ENABLED_DEPTH_TEX) \
     { \

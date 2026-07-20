@@ -24,6 +24,34 @@
 //     ピクセルごとにジッターして半径方向のバンディングもノイズ化する。0で従来挙動と一致
 //----------------------------------------------------------------------------------------------------------------------
 
+//----------------------------------------------------------------------------------------------------------------------
+// ShadowEx : premultiplied alpha 補正
+//
+//   透過モード (LIL_RENDER == 2) の full パスでは、ShadowEx の注入点より前
+//   (lil_pass_forward_normal.hlsl の LIL_PREMULTIPLY) で fd.col.rgb *= fd.col.a が
+//   済んでおり、以降 fd.col.rgb は premultiplied 空間になる (ブレンドも One 系)。
+//   ここへ加算/上書き系のFXが素の色をそのまま合成すると、α が小さい画素ほど下地が
+//   薄れてFX色だけが相対的に濃く残り、α=0 の画素でも色が出てしまう。
+//   lilToon 本体もエミッションで同じ補正を入れている (OVERRIDE_BLEND_EMISSION)。
+//
+//   lite パス / gem パスは注入点が premultiply より前 (もしくは premultiply 自体が
+//   無い) ため補正不要。不透明・カットアウトも premultiply されないので補正しない。
+//   LIL_RENDER が未定義のパスでは 0 扱いとなり係数1 (=無補正) にフォールバックする。
+//----------------------------------------------------------------------------------------------------------------------
+#if LIL_RENDER == 2 && !defined(LIL_REFRACTION) && !defined(LIL_LITE)
+    #define LIL_SHADOWEX_PREMUL_A (fd.col.a)
+#else
+    #define LIL_SHADOWEX_PREMUL_A (1.0)
+#endif
+
+// lilBlendColor のブレンドモードに応じた premultiplied alpha 補正係数を返す。
+//   Normal(0)/Add(1)/Screen(2) : ソース色を α 倍する必要がある
+//   Multiply(3)                : dstCol に対して線形なため補正すると二重に暗くなる
+float lilShadowExPremulFactor(float blendMode, float premulA)
+{
+    return blendMode > 2.5 ? 1.0 : premulA;
+}
+
 // サンプリングパターン: 参照実装 (SSAOAngleBased.cs) と同様に
 // 回転角は 0..2π を6分割した各区間内、距離は 0.1..1.0 を6分割した各区間内から
 // 選んだ値を定数として焼き込み (元実装はCPU側で乱数生成して配列で渡している)
@@ -305,11 +333,14 @@ float lilShadowExSpecular(float3 N, float3 V, float3 L, float ndl, float smoothn
 //     - ShadowMask     : 影部 (fd.shadowmix が小さい部分) でレイヤーを減衰
 //     - lilBlendColor  : Normal/Add/Screen/Multiply の4モード
 //   mc はテクスチャ色 × レイヤー色 (aはブレンド強度)、mask は共有FXマスクの選択ch。
+//   premulA は premultiplied alpha 補正係数 (LIL_SHADOWEX_PREMUL_A)。透過モードで
+//   レイヤー色が透明部分に残らないようソース色へ掛ける。
 //----------------------------------------------------------------------------------------------------------------------
-float3 lilShadowExMatCapLayer(float3 col, float4 mc, float3 lightColor, float shadowmix, float mask, float blendMode, float enableLighting, float shadowMask)
+float3 lilShadowExMatCapLayer(float3 col, float4 mc, float3 lightColor, float shadowmix, float mask, float blendMode, float enableLighting, float shadowMask, float premulA)
 {
     mc.rgb = lerp(mc.rgb, mc.rgb * lightColor, enableLighting);
     mc.a = lerp(mc.a, mc.a * shadowmix, shadowMask);
+    mc.rgb *= lilShadowExPremulFactor(blendMode, premulA);
     return lilBlendColor(col, mc.rgb, saturate(mc.a * mask), (uint)blendMode);
 }
 
