@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7265182953261769335}
   - component: {fileID: 74383567476993540}
   m_Layer: 0
-  m_Name: LightForDepth
+  m_Name: "[\u30A2\u30D0\u30BF\u30FC\u5185\u306B\u914D\u7F6E]LightForDepth"
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
