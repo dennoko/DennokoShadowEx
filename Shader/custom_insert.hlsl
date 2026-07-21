@@ -313,15 +313,60 @@ void lilShadowExSampleNormalMasks(float2 uvMain, float ch1, float ch2, out float
     mask2Val = (ch2 < 3.5) ? lilShadowExSelectCh(m1, ch2) : lilShadowExSelectCh(m2, ch2 - 4.0);
 }
 
-// スタイライズド Blinn-Phong スペキュラ量 (0..) を返す。
-//   smoothness(0..1) をハイライトの鋭さ (指数) に変換し、N・L>0 の受光面のみに出す。
-float lilShadowExSpecular(float3 N, float3 V, float3 L, float ndl, float smoothness)
+// GSAA (Geometric Specular Anti-Aliasing) 補正
+void lilShadowExGSAAForSmoothness(inout float smoothness, float3 N, float strength)
 {
-    float3 halfDir = normalize(L + V);
-    float nh = saturate(dot(N, halfDir));
-    float specPow = exp2(saturate(smoothness) * 10.0 + 1.0); // 2..2048
-    return pow(nh, specPow) * saturate(ndl);
+    if (strength <= 0.0) return;
+    float3 dx = abs(ddx(N));
+    float3 dy = abs(ddy(N));
+    float dxy = max(dot(dx, dx), dot(dy, dy));
+    float roughnessGSAA = dxy / (dxy * 5.0 + 0.002) * strength;
+    smoothness = min(smoothness, saturate(1.0 - roughnessGSAA));
 }
+
+// 物理ベース (GGX NDF + Smith-GGX 可視性関数 + Schlick Fresnel) スペキュラー反射項を計算する。
+float3 lilShadowExRealSpecular(float3 origN, float3 mapN, float3 V, float3 L, float3 albedo, float smoothnessIn, float metallicIn, float reflectanceIn, float normalStrength, float gsaaStrength)
+{
+    float smoothness = saturate(smoothnessIn);
+    float3 N = lerp(origN, mapN, saturate(normalStrength));
+    lilShadowExGSAAForSmoothness(smoothness, N, gsaaStrength);
+
+    float perceptualRoughness = 1.0 - smoothness;
+    float roughness = perceptualRoughness * perceptualRoughness;
+
+    float metallic = saturate(metallicIn);
+    float3 specularF0 = lerp(reflectanceIn.rrr, albedo, metallic);
+
+    float3 H = normalize(V + L);
+    float nh = saturate(dot(N, H));
+    float nv = saturate(dot(N, V));
+    float nl = saturate(dot(N, L));
+    float lh = saturate(dot(L, H));
+
+    float roughness2 = max(roughness, 0.002);
+    float r2 = roughness2 * roughness2;
+    float d = (nh * r2 - nh) * nh + 1.0;
+    float ggx = r2 / (d * d + 1e-7);
+
+    float lambdaV = nl * (nv * (1.0 - roughness2) + roughness2);
+    float lambdaL = nv * (nl * (1.0 - roughness2) + roughness2);
+    float sjggx = 0.5 / (lambdaV + lambdaL + 1e-5);
+
+    float specularTerm = sjggx * ggx;
+    #ifdef LIL_COLORSPACE_GAMMA
+        specularTerm = sqrt(max(1e-4, specularTerm));
+    #endif
+    specularTerm *= nl;
+
+    // Schlick Fresnel: F0 + (1 - F0) * (1 - lh)^5
+    float a = 1.0 - lh;
+    float a5 = a * a * a * a * a;
+    float3 fresnel = specularF0 + (1.0 - specularF0) * a5;
+
+    return specularTerm * fresnel;
+}
+
+
 
 //----------------------------------------------------------------------------------------------------------------------
 // ShadowEx : MatCap追加レイヤー (最大3) の合成ヘルパー

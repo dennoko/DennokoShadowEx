@@ -50,10 +50,17 @@
     float  _CustomRim2ndDepthThreshold; \
     float4 _CustomSpecColor; \
     float  _CustomSpecEnabled; \
+    float  _CustomSpecMainStrength; \
     float  _CustomSpecSmoothness; \
+    float  _CustomSpecMetallic; \
+    float  _CustomSpecReflectance; \
+    float  _CustomSpecNormalStrength; \
+    float  _CustomSpecGSAAStrength; \
     float  _CustomSpecStrength; \
     float  _CustomSpecBlendMode; \
     float  _CustomSpecEnableLighting; \
+    float  _CustomSpecApplyMultiLight; \
+    float  _CustomSpecApplyReflection; \
     float  _CustomSpecShadowMask; \
     float  _CustomSpecMaskChannel; \
     float4 _CustomContactShadowColor; \
@@ -155,8 +162,14 @@
 //   (_CustomFXMask) の任意chで強度をマスク、lilBlendColor でブレンド。
 //   マスク値は BEFORE_EMISSION_1ST (このフックより前に展開される) でキャッシュ
 //   済みの lilShadowExFXMask を参照する (追加サンプル無し)。
+#if defined(LIL_PASS_FORWARDADD)
+    #define LIL_SHADOWEX_IS_FORWARDADD 1
+#else
+    #define LIL_SHADOWEX_IS_FORWARDADD 0
+#endif
+
 #define BEFORE_BLEND_EMISSION \
-    if (_CustomRim2ndEnabled > 0.5) \
+    if (_CustomRim2ndEnabled > 0.5 && LIL_SHADOWEX_IS_FORWARDADD == 0) \
     { \
         float rim2 = 0.0; \
         if (_CustomRim2ndMode < 0.5) \
@@ -177,13 +190,36 @@
     } \
     if (_CustomSpecEnabled > 0.5) \
     { \
-        float spec = lilShadowExSpecular(fd.N, fd.V, fd.L, fd.ln, _CustomSpecSmoothness); \
         float specMask = lilShadowExSelectMaskCh(_CustomSpecMaskChannel); \
-        float specAmt = spec * _CustomSpecStrength * specMask * _CustomSpecColor.a; \
-        specAmt = lerp(specAmt, specAmt * fd.shadowmix, _CustomSpecShadowMask); \
-        float3 specCol = lerp(_CustomSpecColor.rgb, _CustomSpecColor.rgb * fd.lightColor, _CustomSpecEnableLighting); \
+        float specAmt = _CustomSpecStrength * specMask * _CustomSpecColor.a; \
+        float3 specCol = lerp(_CustomSpecColor.rgb, _CustomSpecColor.rgb * fd.albedo, _CustomSpecMainStrength); \
         specCol *= lilShadowExPremulFactor(_CustomSpecBlendMode, LIL_SHADOWEX_PREMUL_A); \
-        fd.col.rgb = lilBlendColor(fd.col.rgb, specCol, saturate(specAmt), (uint)_CustomSpecBlendMode); \
+        if (LIL_SHADOWEX_IS_FORWARDADD == 0 || _CustomSpecApplyMultiLight > 0.5) \
+        { \
+            float3 specLight = lilShadowExRealSpecular(fd.origN, fd.N, fd.V, fd.L, fd.albedo, _CustomSpecSmoothness, _CustomSpecMetallic, _CustomSpecReflectance, _CustomSpecNormalStrength, _CustomSpecGSAAStrength); \
+            float lightAmt = lerp(specAmt, specAmt * fd.shadowmix, _CustomSpecShadowMask); \
+            float3 litCol = lerp(specCol, specCol * fd.lightColor, _CustomSpecEnableLighting); \
+            fd.col.rgb = lilBlendColor(fd.col.rgb, litCol * specLight, saturate(lightAmt), (uint)_CustomSpecBlendMode); \
+        } \
+        if (LIL_SHADOWEX_IS_FORWARDADD == 0 && _CustomSpecApplyReflection > 0.5) \
+        { \
+            float specSmooth = saturate(_CustomSpecSmoothness); \
+            float3 specN = lerp(fd.origN, fd.N, saturate(_CustomSpecNormalStrength)); \
+            float specPercRough = 1.0 - specSmooth; \
+            float specRough = specPercRough * specPercRough; \
+            float specMet = saturate(_CustomSpecMetallic); \
+            float3 specF0 = lerp(_CustomSpecReflectance.rrr, fd.albedo, specMet); \
+            float3 envReflectionColor = LIL_GET_ENVIRONMENT_REFLECTION(fd.V, specN, specPercRough, fd.positionWS); \
+            float surfaceReduction = 1.0 / (specRough * specRough + 1.0); \
+            float oneMinusReflectivity = 0.96 - specMet * 0.96; \
+            float grazingTerm = saturate(specSmooth + (1.0 - oneMinusReflectivity)); \
+            float nv = saturate(dot(specN, fd.V)); \
+            float a = 1.0 - nv; \
+            float a5 = a * a * a * a * a; \
+            float3 fresnelEnv = lerp(specF0, grazingTerm.rrr, a5); \
+            float3 envReflect = surfaceReduction * envReflectionColor * fresnelEnv; \
+            fd.col.rgb = lilBlendColor(fd.col.rgb, specCol * envReflect, saturate(specAmt), (uint)_CustomSpecBlendMode); \
+        } \
     }
 
 // Inserting a process into pixel shader

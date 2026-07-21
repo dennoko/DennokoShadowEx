@@ -77,10 +77,17 @@ namespace dennokoworks
         // Additional Specular + shared FX mask
         MaterialProperty customSpecEnabled;
         MaterialProperty customSpecColor;
+        MaterialProperty customSpecMainStrength;
         MaterialProperty customSpecSmoothness;
+        MaterialProperty customSpecMetallic;
+        MaterialProperty customSpecReflectance;
+        MaterialProperty customSpecNormalStrength;
+        MaterialProperty customSpecGSAAStrength;
         MaterialProperty customSpecStrength;
         MaterialProperty customSpecBlendMode;
         MaterialProperty customSpecEnableLighting;
+        MaterialProperty customSpecApplyMultiLight;
+        MaterialProperty customSpecApplyReflection;
         MaterialProperty customSpecShadowMask;
         MaterialProperty customSpecMaskChannel;
         MaterialProperty customFXMask;
@@ -249,10 +256,17 @@ namespace dennokoworks
 
             customSpecEnabled        = FindProperty("_CustomSpecEnabled",        props, false);
             customSpecColor          = FindProperty("_CustomSpecColor",          props, false);
+            customSpecMainStrength   = FindProperty("_CustomSpecMainStrength",   props, false);
             customSpecSmoothness     = FindProperty("_CustomSpecSmoothness",     props, false);
+            customSpecMetallic       = FindProperty("_CustomSpecMetallic",       props, false);
+            customSpecReflectance    = FindProperty("_CustomSpecReflectance",    props, false);
+            customSpecNormalStrength = FindProperty("_CustomSpecNormalStrength", props, false);
+            customSpecGSAAStrength   = FindProperty("_CustomSpecGSAAStrength",   props, false);
             customSpecStrength       = FindProperty("_CustomSpecStrength",       props, false);
             customSpecBlendMode      = FindProperty("_CustomSpecBlendMode",      props, false);
             customSpecEnableLighting = FindProperty("_CustomSpecEnableLighting", props, false);
+            customSpecApplyMultiLight= FindProperty("_CustomSpecApplyMultiLight",props, false);
+            customSpecApplyReflection= FindProperty("_CustomSpecApplyReflection",props, false);
             customSpecShadowMask     = FindProperty("_CustomSpecShadowMask",     props, false);
             customSpecMaskChannel    = FindProperty("_CustomSpecMaskChannel",    props, false);
             customFXMask             = FindProperty("_CustomFXMask",             props, false);
@@ -591,9 +605,14 @@ namespace dennokoworks
                     EditorGUI.BeginDisabledGroup(!specEnabled);
                 }
 
-                if(customSpecColor      != null) m_MaterialEditor.ShaderProperty(customSpecColor,      ShadowExLanguage.Get("スペキュラ色 (HDR)", "Specular Color (HDR)"));
-                if(customSpecSmoothness != null) m_MaterialEditor.ShaderProperty(customSpecSmoothness, ShadowExLanguage.Get("スムーズネス", "Smoothness"));
-                if(customSpecStrength   != null) m_MaterialEditor.ShaderProperty(customSpecStrength,   ShadowExLanguage.Get("強度", "Strength"));
+                if(customSpecColor        != null) m_MaterialEditor.ShaderProperty(customSpecColor,        ShadowExLanguage.Get("スペキュラ色 (HDR)", "Specular Color (HDR)"));
+                if(customSpecMainStrength != null) m_MaterialEditor.ShaderProperty(customSpecMainStrength, ShadowExLanguage.Get("メインカラー強度", "Main Color Strength"));
+                if(customSpecSmoothness   != null) m_MaterialEditor.ShaderProperty(customSpecSmoothness,   ShadowExLanguage.Get("スムーズネス", "Smoothness"));
+                if(customSpecMetallic     != null) m_MaterialEditor.ShaderProperty(customSpecMetallic,     ShadowExLanguage.Get("金属度", "Metallic"));
+                if(customSpecReflectance  != null) m_MaterialEditor.ShaderProperty(customSpecReflectance,  ShadowExLanguage.Get("反射率 (F0)", "Reflectance (F0)"));
+                if(customSpecNormalStrength != null) m_MaterialEditor.ShaderProperty(customSpecNormalStrength, ShadowExLanguage.Get("ノーマル強度", "Normal Strength"));
+                if(customSpecGSAAStrength   != null) m_MaterialEditor.ShaderProperty(customSpecGSAAStrength,   ShadowExLanguage.Get("GSAA強度", "GSAA Strength"));
+                if(customSpecStrength     != null) m_MaterialEditor.ShaderProperty(customSpecStrength,     ShadowExLanguage.Get("強度", "Strength"));
 
                 // Blend mode: 0=Normal / 1=Add / 2=Screen / 3=Multiply
                 if(customSpecBlendMode != null)
@@ -605,6 +624,21 @@ namespace dennokoworks
                 }
 
                 if(customSpecEnableLighting != null) m_MaterialEditor.ShaderProperty(customSpecEnableLighting, ShadowExLanguage.Get("ライティング有効", "Enable Lighting"));
+
+                if(customSpecApplyMultiLight != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    bool multiLight = EditorGUILayout.Toggle(ShadowExLanguage.Get("複数ライトからの光沢を有効化", "Apply Multi-Light Specular"), customSpecApplyMultiLight.floatValue > 0.5f);
+                    if(EditorGUI.EndChangeCheck()) customSpecApplyMultiLight.floatValue = multiLight ? 1f : 0f;
+                }
+
+                if(customSpecApplyReflection != null)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    bool envReflect = EditorGUILayout.Toggle(ShadowExLanguage.Get("環境反射を有効化", "Apply Environment Reflection"), customSpecApplyReflection.floatValue > 0.5f);
+                    if(EditorGUI.EndChangeCheck()) customSpecApplyReflection.floatValue = envReflect ? 1f : 0f;
+                }
+
                 if(customSpecShadowMask     != null) m_MaterialEditor.ShaderProperty(customSpecShadowMask,     ShadowExLanguage.Get("シャドウマスク", "Shadow Mask"));
 
                 DrawMaskChannelPopup(customSpecMaskChannel);
@@ -784,10 +818,17 @@ namespace dennokoworks
                 case CustomPropertyBlock.AdditionalSpecular:
                     if(customSpecEnabled != null) list.Add(customSpecEnabled);
                     if(customSpecColor != null) list.Add(customSpecColor);
+                    if(customSpecMainStrength != null) list.Add(customSpecMainStrength);
                     if(customSpecSmoothness != null) list.Add(customSpecSmoothness);
+                    if(customSpecMetallic != null) list.Add(customSpecMetallic);
+                    if(customSpecReflectance != null) list.Add(customSpecReflectance);
+                    if(customSpecNormalStrength != null) list.Add(customSpecNormalStrength);
+                    if(customSpecGSAAStrength != null) list.Add(customSpecGSAAStrength);
                     if(customSpecStrength != null) list.Add(customSpecStrength);
                     if(customSpecBlendMode != null) list.Add(customSpecBlendMode);
                     if(customSpecEnableLighting != null) list.Add(customSpecEnableLighting);
+                    if(customSpecApplyMultiLight != null) list.Add(customSpecApplyMultiLight);
+                    if(customSpecApplyReflection != null) list.Add(customSpecApplyReflection);
                     if(customSpecShadowMask != null) list.Add(customSpecShadowMask);
                     if(customSpecMaskChannel != null) list.Add(customSpecMaskChannel);
                     break;

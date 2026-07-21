@@ -44,10 +44,17 @@
         // ShadowEx Additional Specular (base pass, stylized Blinn-Phong)
         _CustomSpecEnabled ("Enable Add Specular", Float) = 0
         [HDR] _CustomSpecColor ("Specular Color", Color) = (1,1,1,1)
+        _CustomSpecMainStrength ("Main Color Strength", Range(0,1)) = 0
         _CustomSpecSmoothness ("Smoothness", Range(0,1)) = 0.9
+        _CustomSpecMetallic ("Metallic", Range(0,1)) = 0
+        _CustomSpecReflectance ("Reflectance (F0)", Range(0,1)) = 0.04
+        _CustomSpecNormalStrength ("Normal Strength", Range(0,1)) = 1.0
+        _CustomSpecGSAAStrength ("GSAA Strength", Range(0,1)) = 0
         _CustomSpecStrength ("Strength", Range(0,10)) = 1
         _CustomSpecBlendMode ("Blend (0:Nrm 1:Add 2:Scrn 3:Mul)", Float) = 1
         _CustomSpecEnableLighting ("Enable Lighting", Range(0,1)) = 1
+        _CustomSpecApplyMultiLight ("Apply Multi-Light Specular", Float) = 1
+        _CustomSpecApplyReflection ("Apply Environment Reflection", Float) = 0
         _CustomSpecShadowMask ("Shadow Mask", Range(0,1)) = 1
         _CustomSpecMaskChannel ("Mask Channel (0-3:Mask1 RGBA / 4-7:Mask2 RGBA)", Float) = 0
 

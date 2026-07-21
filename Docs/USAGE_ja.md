@@ -124,17 +124,24 @@ lilToon 本体のノーマルマップとは別に、**独立した2枚のノー
 
 ## 7. Additional Specular (追加スペキュラ)
 
-メインライト方向に対する Blinn-Phong ハイライトを追加し、光沢感や髪・衣装のツヤを制御します。
+lilToon のリアルタイプ反射と同等の物理ベース（GGX NDF + Smith-GGX 可視性関数 + Schlick Fresnel）スペキュラーハイライトを追加します。
 
 * **主なパラメーター**:
   * **スペキュラ色 (HDR) (`_CustomSpecColor`)**: ハイライトの色。
+  * **メインカラー強度 (`_CustomSpecMainStrength`)**: メインテクスチャの色（albedo）をスペキュラー色に乗せる割合。リムライトと同等の色決定方式です。
   * **スムーズネス (`_CustomSpecSmoothness`)**: 0で広範囲のボケた光、1で鋭い絞られたハイライト。
-  * **強度 (`_CustomSpecStrength`)**: ハイライトの明るさ。
+  * **金属度 (`_CustomSpecMetallic`)**: 金属度。1に近づくほど Albedo 色の反射率が反映されます。
+  * **反射率 (F0) (`_CustomSpecReflectance`)**: 非金属時のフレネル基本反射率 (F0)。標準は 0.04。
+  * **ノーマル強度 (`_CustomSpecNormalStrength`)**: ノーマルマップがスペキュラー計算に与える影響度。
+  * **GSAA強度 (`_CustomSpecGSAAStrength`)**: 幾何学的スペキュラーアンチエイリアシングの適用強度。
+  * **強度 (`_CustomSpecStrength`)**: ハイライトの明るさ倍率。
   * **合成モード (`_CustomSpecBlendMode`)**:
     * `通常 (Normal)` / `加算 (Add)` / `スクリーン (Screen)` / `乗算 (Multiply)`
-  * **ライティング有効 (`_CustomSpecEnableLighting`)**: ライト色追従。
-  * **シャドウマスク (`_CustomSpecShadowMask`)**: 影部でのハイライト消灯。
-  * **マスクチャンネル (`_CustomSpecMaskChannel`)**: Shared FX Mask の指定チャンネル。
+  * **ライティング有効 (`_CustomSpecEnableLighting`)**: 1でメインライト色に追従。
+  * **複数ライトからの光沢を有効化 (`_CustomSpecApplyMultiLight`)**: ON(1)の時、Point Light や Spot Light などのリアルタイム追加ライトからもそれぞれの光方向に合わせた物理スペキュラーツヤを生成します。
+  * **環境反射を有効化 (`_CustomSpecApplyReflection`)**: ON(1)の時、ワールドのリフレクションプローブ/環境キューブマップから環境光の映り込みをサンプルしスペキュラーに合成します。
+  * **シャドウマスク (`_CustomSpecShadowMask`)**: 影部でのハイライトの減衰強度。
+  * **マスクチャンネル (`_CustomSpecMaskChannel`)**: 適用領域を制限する Shared FX Mask チャンネルの選択。
 
 ---
 

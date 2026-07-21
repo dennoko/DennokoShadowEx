@@ -124,15 +124,22 @@ A simple multiplicative rim shade that darkens silhouette borders based on view 
 
 ## 7. Additional Specular
 
-Adds stylized Blinn-Phong highlights relative to the main light direction for hair, skin, or fabric shine.
+Adds physically based specular highlights (GGX NDF + Smith-GGX visibility + Schlick Fresnel) equivalent to lilToon's real-type reflection mode.
 
 * **Key Parameters**:
   * **Specular Color (HDR) (`_CustomSpecColor`)**: Highlight color.
+  * **Main Color Strength (`_CustomSpecMainStrength`)**: Ratio of main texture color (albedo) blended into specular color, matching rim light color logic.
   * **Smoothness (`_CustomSpecSmoothness`)**: Controls highlight sharpness (0 = wide soft glow, 1 = sharp highlight).
+  * **Metallic (`_CustomSpecMetallic`)**: Metallic factor. Blends albedo into F0 reflectivity as metallic increases.
+  * **Reflectance (F0) (`_CustomSpecReflectance`)**: Dielectric base reflectance F0 (default = 0.04).
+  * **Normal Strength (`_CustomSpecNormalStrength`)**: Influence of normal map on specular calculation.
+  * **GSAA Strength (`_CustomSpecGSAAStrength`)**: Geometric Specular AA strength to suppress aliasing.
   * **Strength (`_CustomSpecStrength`)**: Specular intensity scale.
   * **Blend Mode (`_CustomSpecBlendMode`)**:
     * `Normal` / `Add` / `Screen` / `Multiply`
   * **Enable Lighting (`_CustomSpecEnableLighting`)**: Follows main light color when enabled.
+  * **Apply Multi-Light Specular (`_CustomSpecApplyMultiLight`)**: When ON(1), generates physical specular highlights from additional real-time point lights and spot lights.
+  * **Apply Environment Reflection (`_CustomSpecApplyReflection`)**: When ON(1), samples reflection probe / cubemap environment reflections and blends into specular.
   * **Shadow Mask (`_CustomSpecShadowMask`)**: Suppresses specular highlights in shadow areas.
   * **Mask Channel (`_CustomSpecMaskChannel`)**: Shared FX Mask channel for specular range.
 
