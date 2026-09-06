@@ -3,7 +3,7 @@
 - 調査日: 2026-09-06
 - 現行: Unity 2022.3.22f1 / Built-in RP
 - 目標: Unity 6 (6000.0 LTS) / **BiRP 維持**
-- 共通調査: [`../../../Docs/Impl/unity6-migration-overview.md`](../../../Docs/Impl/unity6-migration-overview.md)
+- 共通調査: [`unity6-migration-overview.md`](unity6-migration-overview.md)
 
 ## 判定
 
@@ -135,7 +135,7 @@ if(GUI.Button(position, EditorGUIUtility.IconContent("_Popup"), middleButton))
 ### フェーズ 3（外部依存の Unity 6 対応後）
 
 1. **lilToon** の Unity 6 対応版を導入（これが無いとコンパイル不可）
-2. VRChat SDK の Unity 6 対応版を導入（アップロード検証用）
+2. VRChat SDK（Unity 6 対応済み）を導入（アップロード検証用）
 3. 下記チェックリストで動作確認
 
 > **先行検証は不可能**。asmdef が `lilToon.Editor` を直接参照しているため、
