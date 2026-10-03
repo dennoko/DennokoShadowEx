@@ -52,6 +52,30 @@ float lilShadowExPremulFactor(float blendMode, float premulA)
     return blendMode > 2.5 ? 1.0 : premulA;
 }
 
+//----------------------------------------------------------------------------------------------------------------------
+// ShadowEx : パス種別フラグ / ジオメトリ法線
+//
+//   custom.hlsl は .lilcontainer の HLSLINCLUDE ブロックから include されるため、
+//   Unity によって各 HLSLPROGRAM の「先頭」へ挿入される。一方 LIL_PASS_FORWARDADD は
+//   パス内の #pragma lil_multi_compile_forwardadd をインポータが展開して生成するので、
+//   custom.hlsl の時点ではまだ未定義になる (= custom.hlsl 内でのパス判定は必ず失敗する)。
+//   このファイルはパス内 (lil_common.hlsl の後、lil_pass_forward.hlsl の前) に挿入
+//   されるため、ここでフラグを作って custom.hlsl のフックへ渡す。
+//   static const なので分岐は定数畳み込みされ、不要側は丸ごとストリップされる。
+#if defined(LIL_PASS_FORWARDADD)
+    static const float lilShadowExIsForwardAdd = 1.0;
+#else
+    static const float lilShadowExIsForwardAdd = 0.0;
+#endif
+
+//   法線マップ適用前のジオメトリ法線。lite パスは fd.origN を設定しない
+//   (lil_pass_forward_lite.hlsl は fd.N しか作らない) ため fd.N へフォールバックする。
+#if defined(LIL_LITE)
+    #define LIL_SHADOWEX_ORIGN (fd.N)
+#else
+    #define LIL_SHADOWEX_ORIGN (fd.origN)
+#endif
+
 // サンプリングパターン: 参照実装 (SSAOAngleBased.cs) と同様に
 // 回転角は 0..2π を6分割した各区間内、距離は 0.1..1.0 を6分割した各区間内から
 // 選んだ値を定数として焼き込み (元実装はCPU側で乱数生成して配列で渡している)
@@ -296,6 +320,15 @@ float lilShadowExSelectMaskCh(float channel)
     return lilShadowExSelectCh(lilShadowExFXMask2, channel - 4.0);
 }
 
+// マスクキャッシュを使わず、指定chが属するマスク1枚だけを直接サンプルして返す。
+// キャッシュ生成 (BEFORE_EMISSION_1ST) はベースパス限定のため、追加ライトパス
+// (ForwardAdd) の追加スペキュラはこちらを使う。サンプルは常に1回。
+float lilShadowExSampleMaskCh(float2 uvMain, float channel)
+{
+    if (channel < 3.5) return lilShadowExSelectCh(LIL_SAMPLE_2D(_CustomFXMask,  sampler_linear_repeat, uvMain), channel);
+    return lilShadowExSelectCh(LIL_SAMPLE_2D(_CustomFXMask2, sampler_linear_repeat, uvMain), channel - 4.0);
+}
+
 // 追加法線 (BEFORE_NORMAL_2ND) 用の共有FXマスクサンプル。
 // このフックは BEFORE_EMISSION_1ST のマスクキャッシュより前に展開されるため
 // キャッシュを使えない。2枚の法線が参照するチャンネル (ch1/ch2) から必要なマスク
@@ -366,7 +399,24 @@ float3 lilShadowExRealSpecular(float3 origN, float3 mapN, float3 V, float3 L, fl
     return specularTerm * fresnel;
 }
 
-
+// 直接光スペキュラの合成。ベースパス (メインライト) と ForwardAdd パス
+// (ポイント/スポットライト) の両方から呼ばれる。
+//   specLight : lilShadowExRealSpecular() の反射項
+//   mask      : 共有FXマスクの選択ch値
+//   atten     : 追加ライトの距離減衰。ベースパスでは 1.0 を渡す。
+//               ForwardAdd では lightColor 側 (LIL_GET_MAINLIGHT が
+//               LIL_MAINLIGHT_COLOR * atten を入れている) に既に減衰が乗っているため、
+//               ライト追従OFF側の比率にだけ減衰を掛けて二重適用を避ける。
+//   premulA   : premultiplied alpha 補正係数 (LIL_SHADOWEX_PREMUL_A)
+float3 lilShadowExApplySpecular(float3 col, float3 specLight, float3 albedo, float3 lightColor, float shadowmix, float mask, float atten, float premulA)
+{
+    float specAmt = _CustomSpecStrength * mask * _CustomSpecColor.a * atten;
+    float3 specCol = lerp(_CustomSpecColor.rgb, _CustomSpecColor.rgb * albedo, _CustomSpecMainStrength);
+    specCol *= lilShadowExPremulFactor(_CustomSpecBlendMode, premulA);
+    float lightAmt = lerp(specAmt, specAmt * shadowmix, _CustomSpecShadowMask);
+    float3 litCol = lerp(specCol, specCol * lightColor, _CustomSpecEnableLighting);
+    return lilBlendColor(col, litCol * specLight, saturate(lightAmt), (uint)_CustomSpecBlendMode);
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 // ShadowEx : MatCap追加レイヤー (最大3) の合成ヘルパー

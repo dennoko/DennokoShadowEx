@@ -139,9 +139,13 @@ Adds physically based specular highlights (GGX NDF + Smith-GGX visibility + Schl
     * `Normal` / `Add` / `Screen` / `Multiply`
   * **Enable Lighting (`_CustomSpecEnableLighting`)**: Follows main light color when enabled.
   * **Apply Multi-Light Specular (`_CustomSpecApplyMultiLight`)**: When ON(1), generates physical specular highlights from additional real-time point lights and spot lights.
-  * **Apply Environment Reflection (`_CustomSpecApplyReflection`)**: When ON(1), samples reflection probe / cubemap environment reflections and blends into specular.
+  * **Apply Environment Reflection (`_CustomSpecApplyReflection`)**: When ON(1), samples reflection probe / cubemap environment reflections and blends into specular. Base pass only.
   * **Shadow Mask (`_CustomSpecShadowMask`)**: Suppresses specular highlights in shadow areas.
   * **Mask Channel (`_CustomSpecMaskChannel`)**: Shared FX Mask channel for specular range.
+
+> **If the environment reflection looks like it does nothing**
+> Reflection strength is proportional to Fresnel reflectance. With the defaults (**Metallic 0 / Reflectance (F0) 0.04**) a face-on surface only picks up about 4% of the environment color, so nothing is visible except near the silhouette. This is physically correct (lilToon's own reflection uses the same formula).
+> To get a visible reflection, raise **Metallic** (the surface then reflects with the albedo color) or raise **Reflectance (F0)** to roughly 0.3–1.0. **Strength** also scales the whole thing (values above 1.0 are honored in Add blend mode).
 
 ---
 

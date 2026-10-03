@@ -156,20 +156,20 @@
 // _CustomRim2ndMainStrength でリム色へのメインカラー(fd.albedo)乗算を補間
 // (lilToon本体リムの _RimMainStrength と同じ方式)。
 //
-// 追加スペキュラ (質感系) も同じ注入点に相乗り。ベースパス限定なので追加ライトで
-// 二重加算されず、full/lite 両パスに存在するため Lite でも効く。
-//   スタイライズド Blinn-Phong を fd.N/fd.V/fd.L から算出し、共有FXマスク
-//   (_CustomFXMask) の任意chで強度をマスク、lilBlendColor でブレンド。
+// 追加スペキュラ (質感系) も同じ注入点に相乗り。full/lite 両パスに存在するため
+// Lite でも効く。ここはベースパス限定なので、扱うのはメインライト分と環境反射のみ。
+// 追加ライト (ポイント/スポット) 分は後述の BEFORE_RIMLIGHT で別途合成する。
+//   直接光は GGX + Smith-GGX + Schlick Fresnel (lilShadowExRealSpecular)、
+//   環境反射はリフレクションプローブ/キューブマップ (LIL_GET_ENVIRONMENT_REFLECTION) を
+//   lilToon 本体の lilReflection() と同じ式で合成する。
+//   どちらも共有FXマスク (_CustomFXMask) の任意chで強度をマスクし lilBlendColor でブレンド。
 //   マスク値は BEFORE_EMISSION_1ST (このフックより前に展開される) でキャッシュ
 //   済みの lilShadowExFXMask を参照する (追加サンプル無し)。
-#if defined(LIL_PASS_FORWARDADD)
-    #define LIL_SHADOWEX_IS_FORWARDADD 1
-#else
-    #define LIL_SHADOWEX_IS_FORWARDADD 0
-#endif
-
+//   環境反射の合成は lilToon 本体に倣い「ソース色=スペキュラ色 / ブレンドα=反射量」と
+//   している。反射量に強度を掛けるので Strength スライダーがそのまま効く
+//   (加算モードのみ 1.0 を超える値を許可し、他モードは lerp の外挿を避けて saturate)。
 #define BEFORE_BLEND_EMISSION \
-    if (_CustomRim2ndEnabled > 0.5 && LIL_SHADOWEX_IS_FORWARDADD == 0) \
+    if (_CustomRim2ndEnabled > 0.5) \
     { \
         float rim2 = 0.0; \
         if (_CustomRim2ndMode < 0.5) \
@@ -191,20 +191,12 @@
     if (_CustomSpecEnabled > 0.5) \
     { \
         float specMask = lilShadowExSelectMaskCh(_CustomSpecMaskChannel); \
-        float specAmt = _CustomSpecStrength * specMask * _CustomSpecColor.a; \
-        float3 specCol = lerp(_CustomSpecColor.rgb, _CustomSpecColor.rgb * fd.albedo, _CustomSpecMainStrength); \
-        specCol *= lilShadowExPremulFactor(_CustomSpecBlendMode, LIL_SHADOWEX_PREMUL_A); \
-        if (LIL_SHADOWEX_IS_FORWARDADD == 0 || _CustomSpecApplyMultiLight > 0.5) \
-        { \
-            float3 specLight = lilShadowExRealSpecular(fd.origN, fd.N, fd.V, fd.L, fd.albedo, _CustomSpecSmoothness, _CustomSpecMetallic, _CustomSpecReflectance, _CustomSpecNormalStrength, _CustomSpecGSAAStrength); \
-            float lightAmt = lerp(specAmt, specAmt * fd.shadowmix, _CustomSpecShadowMask); \
-            float3 litCol = lerp(specCol, specCol * fd.lightColor, _CustomSpecEnableLighting); \
-            fd.col.rgb = lilBlendColor(fd.col.rgb, litCol * specLight, saturate(lightAmt), (uint)_CustomSpecBlendMode); \
-        } \
-        if (LIL_SHADOWEX_IS_FORWARDADD == 0 && _CustomSpecApplyReflection > 0.5) \
+        float3 specLight = lilShadowExRealSpecular(LIL_SHADOWEX_ORIGN, fd.N, fd.V, fd.L, fd.albedo, _CustomSpecSmoothness, _CustomSpecMetallic, _CustomSpecReflectance, _CustomSpecNormalStrength, _CustomSpecGSAAStrength); \
+        fd.col.rgb = lilShadowExApplySpecular(fd.col.rgb, specLight, fd.albedo, fd.lightColor, fd.shadowmix, specMask, 1.0, LIL_SHADOWEX_PREMUL_A); \
+        if (_CustomSpecApplyReflection > 0.5) \
         { \
             float specSmooth = saturate(_CustomSpecSmoothness); \
-            float3 specN = lerp(fd.origN, fd.N, saturate(_CustomSpecNormalStrength)); \
+            float3 specN = lerp(LIL_SHADOWEX_ORIGN, fd.N, saturate(_CustomSpecNormalStrength)); \
             float specPercRough = 1.0 - specSmooth; \
             float specRough = specPercRough * specPercRough; \
             float specMet = saturate(_CustomSpecMetallic); \
@@ -218,8 +210,29 @@
             float a5 = a * a * a * a * a; \
             float3 fresnelEnv = lerp(specF0, grazingTerm.rrr, a5); \
             float3 envReflect = surfaceReduction * envReflectionColor * fresnelEnv; \
-            fd.col.rgb = lilBlendColor(fd.col.rgb, specCol * envReflect, saturate(specAmt), (uint)_CustomSpecBlendMode); \
+            float3 reflCol = lerp(_CustomSpecColor.rgb, _CustomSpecColor.rgb * fd.albedo, _CustomSpecMainStrength); \
+            reflCol *= lilShadowExPremulFactor(_CustomSpecBlendMode, LIL_SHADOWEX_PREMUL_A); \
+            float3 reflAmt = envReflect * (_CustomSpecStrength * specMask * _CustomSpecColor.a); \
+            bool reflAdd = _CustomSpecBlendMode > 0.5 && _CustomSpecBlendMode < 1.5; \
+            fd.col.rgb = lilBlendColor(fd.col.rgb, reflCol, reflAdd ? reflAmt : saturate(reflAmt), (uint)_CustomSpecBlendMode); \
         } \
+    }
+
+// 追加スペキュラ (追加ライト) : ポイント/スポットライトからのハイライト。
+// BEFORE_BLEND_EMISSION は lilToon 側で #ifndef LIL_PASS_FORWARDADD の内側にあり
+// (lil_pass_forward_normal.hlsl / lil_pass_forward_lite.hlsl の両方)、ベースパスでしか
+// 展開されない。そのため追加ライト分は full/lite 両パスに存在し、かつ FORWARDADD
+// ガードの外にある BEFORE_RIMLIGHT へ分離して注入する。
+// ベースパスではこのブロックは定数偽になり丸ごとストリップされる。
+// 共有FXマスクのキャッシュ (BEFORE_EMISSION_1ST) もベースパス限定のため、
+// ここでは必要なマスクを直接1回だけサンプルする。
+#define BEFORE_RIMLIGHT \
+    if (lilShadowExIsForwardAdd > 0.5 && _CustomSpecEnabled > 0.5 && _CustomSpecApplyMultiLight > 0.5) \
+    { \
+        float specMaskFA = lilShadowExSampleMaskCh(fd.uvMain, _CustomSpecMaskChannel); \
+        float3 specLightFA = lilShadowExRealSpecular(LIL_SHADOWEX_ORIGN, fd.N, fd.V, fd.L, fd.albedo, _CustomSpecSmoothness, _CustomSpecMetallic, _CustomSpecReflectance, _CustomSpecNormalStrength, _CustomSpecGSAAStrength); \
+        float attenFA = lerp(fd.attenuation, 1.0, _CustomSpecEnableLighting); \
+        fd.col.rgb = lilShadowExApplySpecular(fd.col.rgb, specLightFA, fd.albedo, fd.lightColor, fd.shadowmix, specMaskFA, attenFA, LIL_SHADOWEX_PREMUL_A); \
     }
 
 // Inserting a process into pixel shader
